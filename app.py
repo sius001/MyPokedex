@@ -6,23 +6,19 @@ from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-# --- PRODUCTION CONFIG ---
+# --- KEYS (ENSURE THESE ARE CORRECT) ---
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 IMGBB_KEY = os.environ.get("IMGBB_KEY")
 
-# Add these two lines for debugging!
-print(f"DEBUG: SERPAPI_KEY is Loaded: {bool(SERPAPI_KEY)}")
-print(f"DEBUG: IMGBB_KEY is Loaded: {bool(IMGBB_KEY)}")
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Load the local JSON database we built with the scraper
+# 1. LOAD LOCAL DATABASE ON STARTUP
 try:
     with open(os.path.join(BASE_DIR, "PokemonData.json"), "r", encoding="utf-8") as f:
         POKEMON_DB = json.load(f)
-    print("Database loaded successfully.")
-except Exception as e:
-    print(f"Error loading database: {e}")
+    print("Local Pokedex Database Loaded!")
+except FileNotFoundError:
+    print("CRITICAL: PokemonData.json not found! Run the scraper script first.")
     POKEMON_DB = {}
 
 @app.route('/')
@@ -32,88 +28,51 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_image():
     try:
-        print("--- DEBUG: Starting Upload ---")
         data = request.get_json()
-        if not data or 'image' not in data:
-            return jsonify({'error': 'No image data received'}), 400
-            
-        encoded_image = data['image'].split(',', 1)[1]
-
-        # 1. ImgBB Upload
-        print("--- DEBUG: Uploading to ImgBB ---")
-        img_res = requests.post("https://api.imgbb.com/1/upload", 
-                                {"key": IMGBB_KEY, "image": encoded_image}, timeout=15)
-        img_json = img_res.json()
+        encoded_data = data['image'].split(',', 1)[1]
         
-        if 'data' not in img_json:
-            print(f"--- DEBUG: ImgBB Failed: {img_json} ---")
-            return jsonify({'error': 'ImgBB failed', 'raw': img_json}), 500
-            
-        img_url = img_json['data']['url']
-        print(f"--- DEBUG: ImgBB Success: {img_url} ---")
+        # Step 1: Upload to ImgBB
+        res = requests.post("https://api.imgbb.com/1/upload", {"key": IMGBB_KEY, "image": encoded_data})
+        img_url = res.json()['data']['url']
 
-        # 2. Google Lens (Correct New Syntax)
-        print("--- DEBUG: Running SerpApi GoogleSearch ---")
-        
+        # Step 2: Google Lens
         client = serpapi.Client(api_key=SERPAPI_KEY)
-                                
-        try:
-            # 1. Initialize the search object
-            results = client.search({
-                "engine": "google_lens",
-                "url": img_url,
-                "type": "visual_matches"
-            })
-
-            # 3. Pull the visual matches from the dictionary
-            visual_matches = results["visual_matches"]
-            print(f"--- DEBUG: Found {len(visual_matches)} visual matches ---")
-            
-        except Exception as e:
-            print(f"SerpApi Connection Error: {e}")
-            return jsonify({'error': 'Search Engine Connection Failed'}), 500
+        results = client.search({"engine": "google_lens", "url": img_url})
         
-        # 3. Matching
-        visual_matches = search.get("visual_matches", [])
-        print(f"--- DEBUG: Found {len(visual_matches)} visual matches ---")
+        # Step 3: Match Name
+        visual_matches = results.get("visual_matches", [])
+        titles = [match.get("title", "").lower() for match in visual_matches]
+        all_words = " ".join(titles).replace(",", " ").split()
         
-        found_name = None
-        for match in visual_matches:
-            title = match.get("title", "")
-            print(f"--- DEBUG: Checking title: {title} ---")
-            # Clean title: remove special chars and split into words
-            clean_title = title.replace(",", " ").replace("(", " ").replace(")", " ").lower()
-            words = clean_title.split()
-            
-            for word in words:
-                cap_word = word.capitalize()
-                if cap_word in POKEMON_DB:
-                    found_name = cap_word
-                    break
-            if found_name: break
+        # Compare against our local keys (which are Capitalized)
+        match_found = None
+        for word in all_words:
+            capital_word = word.capitalize()
+            if capital_word in POKEMON_DB:
+                match_found = capital_word
+                break
 
-        if not found_name:
-            print("--- DEBUG: No match found in POKEMON_DB ---")
+        if not match_found:
             return jsonify({'error': 'Pokemon not recognized'}), 404
 
-        # 4. Final Response
-        print(f"--- DEBUG: Match Found: {found_name} ---")
-        info = POKEMON_DB[found_name]
+        # Step 4: GET DATA FROM LOCAL DB (NO SCRAPING!)
+        pokemon_info = POKEMON_DB[match_found]
         
+        # Slug is still needed for the external "Details" link
+        slug = match_found.lower().replace(" ", "-").replace(".", "").replace("'", "")
+
         return jsonify({
-            'name': found_name,
-            'number': info.get('number', '#???'),
-            'description': info.get('description', 'No data'),
-            'image_url': f"/static/Full Pokemon/{found_name}.png",
-            'types': info.get('types', ['Unknown']),
-            'pokedex_url': f"https://www.pokemon.com/uk/pokedex/{found_name.lower()}"
+            'name': match_found,
+            'number': pokemon_info['number'],
+            'description': pokemon_info['description'],
+            'image_url': f"/static/Full Pokemon/{match_found}.png",
+            'types': pokemon_info['types'],
+            'pokedex_url': f"https://www.pokemon.com/uk/pokedex/{slug}"
         })
 
     except Exception as e:
-        import traceback
-        err_msg = traceback.format_exc()
-        print(f"--- DEBUG: CRITICAL ERROR ---\n{err_msg}")
-        return jsonify({'error': str(e)}), 500
+        print(f"Error: {e}")
+        return jsonify({'error': 'Server error'}), 500
 
 if __name__ == '__main__':
     # Use the PORT provided by Render
