@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from serpapi import GoogleSearch
+import serpapi
 from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
