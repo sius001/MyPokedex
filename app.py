@@ -7,9 +7,12 @@ from flask import Flask, request, jsonify, render_template
 app = Flask(__name__)
 
 # --- PRODUCTION CONFIG ---
-# This pulls keys from Render's "Environment Variables" menu instead of hardcoding them
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 IMGBB_KEY = os.environ.get("IMGBB_KEY")
+
+# Add these two lines for debugging!
+print(f"DEBUG: SERPAPI_KEY is Loaded: {bool(SERPAPI_KEY)}")
+print(f"DEBUG: IMGBB_KEY is Loaded: {bool(IMGBB_KEY)}")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -49,10 +52,19 @@ def upload_image():
         img_url = img_json['data']['url']
         print(f"--- DEBUG: ImgBB Success: {img_url} ---")
 
-        # 2. Google Lens
-        print("--- DEBUG: Calling SerpApi ---")
-        client = serpapi.Client(api_key=SERPAPI_KEY)
-        search = client.search({"engine": "google_lens", "url": img_url})
+        # 2. Google Lens (SerpApi)
+        print("--- DEBUG: Initializing SerpApi Client ---")
+        
+        if not SERPAPI_KEY:
+            print("ERROR: SERPAPI_KEY is missing from Environment Variables!")
+            return jsonify({'error': 'Server API Key configuration error'}), 500
+
+        try:
+            client = serpapi.Client(api_key=SERPAPI_KEY)
+            search = client.search({"engine": "google_lens", "url": img_url})
+        except Exception as e:
+            print(f"SerpApi Connection Error: {e}")
+            return jsonify({'error': 'Search Engine Connection Failed'}), 500
         
         # 3. Matching
         visual_matches = search.get("visual_matches", [])
