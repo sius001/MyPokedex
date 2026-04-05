@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotom Pokedex</title>
+    <style>
+        :root {
+            --pd-red: #e3350d;
+            --pd-dark: #a12308;
+            --pd-screen: #232323;
+            --pd-lcd: #98cbff;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Pokedex Chassis */
+        .pokedex {
+            width: 340px;
+            background-color: var(--pd-red);
+            border-radius: 10px 10px 10px 40px;
+            border: 4px solid var(--pd-dark);
+            padding: 25px;
+            box-shadow: 12px 12px 0px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        /* Decorative Blue Lens */
+        .pokedex::before {
+            content: "";
+            position: absolute;
+            top: 10px; left: 15px;
+            width: 35px; height: 35px;
+            background: radial-gradient(circle, #85d0ff, #2a75bb);
+            border: 4px solid white;
+            border-radius: 50%;
+        }
+
+        /* Screen Bezel */
+        .bezel {
+            background-color: #dedede;
+            padding: 15px;
+            border-radius: 8px 8px 8px 30px;
+            border: 3px solid #555;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        #display-screen {
+            background-color: var(--pd-screen);
+            height: 280px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 2px solid #333;
+        }
+
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        #info-display {
+            width: 100%;
+            height: 100%;
+            background-color: var(--pd-lcd);
+            display: none;
+            text-align: center;
+            padding-top: 10px;
+        }
+
+        #pokemon-img {
+            height: 120px;
+            margin-bottom: 5px;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
+        }
+
+        #dex-num { font-weight: bold; font-size: 14px; color: #333; }
+        
+        /* Type Badges Styling */
+        .type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            margin: 2px;
+            border-radius: 15px;
+            color: white;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: bold;
+            border: 1px solid rgba(0,0,0,0.1);
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
+        }
+
+        #description-box {
+            font-size: 11px;
+            padding: 10px;
+            margin: 10px 15px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 5px;
+            max-height: 60px;
+            overflow-y: auto;
+            color: #222;
+            line-height: 1.2;
+            text-align: left;
+        }
+
+        /* Name Display */
+        #name-plate {
+            background-color: #51ad60; /* Classic Gameboy Green */
+            color: #0c1e0c;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border: 2px solid #222;
+            text-align: center;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 18px;
+        }
+
+        /* Buttons */
+        .btn-group { display: flex; flex-direction: column; gap: 8px; }
+
+        button {
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            border: 2px solid #222;
+            text-transform: uppercase;
+            transition: 0.1s;
+        }
+
+        #scan-btn { background-color: #333; color: white; }
+        #scan-btn:hover { background-color: #444; }
+
+        #details-btn {
+            background-color: #ffcb05; 
+            color: #2a75bb;
+            display: none;
+        }
+
+        #reset-btn { 
+            background: none; 
+            border: none; 
+            color: #fff; 
+            text-decoration: underline; 
+            font-size: 12px; 
+            padding: 5px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="pokedex">
+    <div class="bezel">
+        <div id="display-screen">
+            <video id="webcam" autoplay playsinline></video>
+            <div id="info-display">
+                <div id="dex-num">#---</div>
+                <img id="pokemon-img" src="" alt="Pokemon">
+                <div id="type-list"></div>
+                <div id="description-box">Searching database...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="name-plate">---</div>
+
+    <div class="btn-group">
+        <button id="scan-btn">Scan</button>
+        <button id="details-btn">Details</button>
+        <button id="reset-btn">Reset</button>
+    </div>
+</div>
+
+<canvas id="hidden-canvas" width="640" height="480" style="display:none;"></canvas>
+
+<script>
+    const typeColors = {
+        "Normal": "#A8A77A", "Fire": "#EE8130", "Water": "#6390F0",
+        "Electric": "#F7D02C", "Grass": "#7AC74C", "Ice": "#96D9D6",
+        "Fighting": "#C22E28", "Poison": "#A33EA1", "Ground": "#E2BF65",
+        "Flying": "#A98FF3", "Psychic": "#F95587", "Bug": "#A6B91A",
+        "Rock": "#B6A136", "Ghost": "#735797", "Dragon": "#6F35FC",
+        "Dark": "#705746", "Steel": "#B7B7CE", "Fairy": "#D685AD"
+    };
+
+    const video = document.getElementById('webcam');
+    const infoDisplay = document.getElementById('info-display');
+    const pokemonImg = document.getElementById('pokemon-img');
+    const dexNum = document.getElementById('dex-num');
+    const typeList = document.getElementById('type-list');
+    const descBox = document.getElementById('description-box');
+    const namePlate = document.getElementById('name-plate');
+    const scanBtn = document.getElementById('scan-btn');
+    const detailsBtn = document.getElementById('details-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const canvas = document.getElementById('hidden-canvas');
+
+    let currentLink = "";
+
+    // Replace your old getUserMedia line with this:
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: "environment", // "environment" targets the back camera
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+        } 
+    })
+    .then(stream => { 
+        video.srcObject = stream; 
+    })
+    .catch(err => { 
+        console.error("Camera Error: ", err);
+        namePlate.innerText = "CAMERA BLOCKED"; 
+    });
+
+    scanBtn.addEventListener('click', () => {
+        namePlate.innerText = "SCANNING...";
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/png');
+
+        fetch('/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.error) throw new Error(data.error);
+
+            video.style.display = 'none';
+            infoDisplay.style.display = 'block';
+
+            namePlate.innerText = data.name;
+            dexNum.innerText = data.number;
+            pokemonImg.src = data.image_url;
+            descBox.innerText = data.description;
+            
+            typeList.innerHTML = "";
+            data.types.forEach(t => {
+                const span = document.createElement('span');
+                span.className = 'type-badge';
+                span.innerText = t;
+                span.style.backgroundColor = typeColors[t] || "#777";
+                typeList.appendChild(span);
+            });
+
+            currentLink = data.pokedex_url;
+            detailsBtn.style.display = 'block';
+        })
+        .catch(err => {
+            namePlate.innerText = "UNKNOWN";
+            console.error(err);
+        });
+    });
+
+    detailsBtn.addEventListener('click', () => { if(currentLink) window.open(currentLink, '_blank'); });
+
+    resetBtn.addEventListener('click', () => {
+        video.style.display = 'block';
+        infoDisplay.style.display = 'none';
+        detailsBtn.style.display = 'none';
+        namePlate.innerText = "---";
+    });
+</script>
+</body>
+</html>
