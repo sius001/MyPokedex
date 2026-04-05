@@ -52,18 +52,24 @@ def upload_image():
         img_url = img_json['data']['url']
         print(f"--- DEBUG: ImgBB Success: {img_url} ---")
 
-        # 2. Google Lens (New SerpApi Syntax)
-        print("--- DEBUG: Initializing SerpApi GoogleSearch ---")
+        # 2. Google Lens (Correct New Syntax)
+        print("--- DEBUG: Running SerpApi GoogleSearch ---")
         
         try:
-            # We pass the parameters directly into GoogleSearch
+            # 1. Initialize the search object
             search = GoogleSearch({
                 "engine": "google_lens",
                 "url": img_url,
                 "api_key": SERPAPI_KEY
             })
+            
+            # 2. Execute the search and convert to a dictionary (CRITICAL STEP)
             results = search.get_dict()
+            
+            # 3. Pull the visual matches from the dictionary
             visual_matches = results.get("visual_matches", [])
+            print(f"--- DEBUG: Found {len(visual_matches)} visual matches ---")
+            
         except Exception as e:
             print(f"SerpApi Connection Error: {e}")
             return jsonify({'error': 'Search Engine Connection Failed'}), 500
