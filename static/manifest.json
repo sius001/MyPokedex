@@ -1,6 +1,6 @@
 {
   "name": "Pokemon Snap",
-  "short_name": "PokemonSnap",
+  "short_name": "Pokemon Snap",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",
