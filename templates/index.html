@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pokemon Snap</title>
     
-    <link rel="manifest" href="/manifest.json?v=1.1" crossorigin="use-credentials">
+    <link rel="manifest" href="/manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#FF5350">
-    <link rel="apple-touch-icon" href="/static/icon-192.png?v=1.1">
-    <link rel="icon" type="image/png" href="/static/icon-192.png?v=1.1">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
@@ -76,6 +76,10 @@
         .util-btn.danger { color: #ff5555; border-color: #ff5555; }
         .util-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
+        .filter-group { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
+        .filter-btn { flex: 1; padding: 10px; font-size: 0.65rem; background: #222; border: 1px solid #444; color: white; font-family: 'Orbitron'; border-radius: 5px; transition: 0.2s; }
+        .filter-btn.active { border-color: var(--rotom-blue); color: var(--rotom-blue); background: #2a2a2a; }
+
         .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 20px; }
         .dex-card { 
             background: var(--card-bg); padding: 8px; border-radius: 10px; 
@@ -133,7 +137,7 @@
 
     <div id="pokedex-page" class="page">
         <input type="text" id="dex-search" placeholder="Search..." style="width:100%; padding:12px; background:#222; border:1px solid #444; color:white; font-family:'Orbitron'; border-radius: 5px;" onkeyup="renderDex()">
-        <div class="filter-group" style="margin-top:10px;">
+        <div class="filter-group">
             <button class="filter-btn active" id="f-all" onclick="setFilter('all')">ALL</button>
             <button class="filter-btn" id="f-caught" onclick="setFilter('caught')">CAUGHT</button>
             <button class="filter-btn" id="f-missing" onclick="setFilter('missing')">MISSING</button>
@@ -213,10 +217,7 @@
                 });
                 const data = await res.json();
                 document.getElementById('scan-line').style.display = "none";
-                if (res.ok) {
-                    currentDisplayedPokemon = data.name;
-                    checkAndSave(data.name, tempPhoto, data);
-                }
+                if (res.ok) checkAndSave(data.name, tempPhoto, data);
             } catch (e) { console.error(e); }
         }
 
@@ -283,7 +284,6 @@
                 span.innerText = t;
                 container.appendChild(span);
             });
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
 
         function downloadPhoto() {
@@ -352,6 +352,7 @@
                 card.className = `dex-card ${isCaught ? '' : 'locked'}`;
                 card.innerHTML = `<img src="${isCaught ? userImg : '/static/Full Pokemon/'+name+'.png'}" loading="lazy"><p>#${info.number}</p><strong>${isCaught ? name : '???' }</strong>`;
                 
+                // NOW CLICKABLE EVEN IF LOCKED
                 card.onclick = () => { 
                     showPage('scanner'); 
                     displayResult(name, userImg, info); 
