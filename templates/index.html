@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pokemon Snap</title>
+    <title>Pokémon Snap</title>
     
-    <link rel="manifest" href="https://pokedex-485k.onrender.com/static/manifest.json" crossorigin="use-credentials">
+    <link rel="manifest" href="/static/manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#FF5350">
-    
-    <link rel="apple-touch-icon" href="https://pokedex-485k.onrender.com/static/icon-192.png?v=2">
-    <link rel="icon" type="image/png" href="https://pokedex-485k.onrender.com/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
@@ -41,132 +40,129 @@
         .page.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        #scanner-container {
-            width: 100%; max-width: 500px; margin: 0 auto;
-            border: 4px solid var(--rotom-blue); border-radius: 15px;
-            position: relative; background: #000; overflow: hidden;
-        }
+        /* Scanner */
+        #scanner-container { width: 100%; max-width: 500px; margin: 0 auto; border: 4px solid var(--rotom-blue); border-radius: 15px; position: relative; background: #000; overflow: hidden; }
         video { width: 100%; display: block; }
-        .scan-line {
-            position: absolute; top: 0; width: 100%; height: 4px;
-            background: var(--rotom-blue); box-shadow: 0 0 15px var(--rotom-blue);
-            animation: scan 2s linear infinite;
-        }
+        .scan-line { position: absolute; top: 0; width: 100%; height: 4px; background: var(--rotom-blue); box-shadow: 0 0 15px var(--rotom-blue); animation: scan 2s linear infinite; }
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
 
-        .result-panel {
-            background: var(--panel-bg); border-radius: 20px;
-            padding: 15px; margin-top: 15px; border: 2px solid #333;
-            display: none;
-        }
-        .res-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--rotom-red); padding-bottom: 8px; }
-        
+        .result-panel { background: var(--panel-bg); border-radius: 20px; padding: 15px; margin-top: 15px; border: 2px solid #333; display: none; }
         .image-comparison { display: flex; gap: 8px; margin: 12px 0; }
-        .image-box { flex: 1; text-align: center; background: #111; padding: 8px; border-radius: 10px; border: 1px solid #444; position: relative; }
+        .image-box { flex: 1; text-align: center; background: #111; padding: 8px; border-radius: 10px; border: 1px solid #444; }
         .image-box img { width: 100%; height: 110px; object-fit: contain; }
-        .image-box label { font-size: 0.5rem; color: var(--rotom-blue); display: block; margin-top: 4px; }
         .missing-photo { filter: grayscale(1) opacity(0.2); }
 
-        .type-pill { display: inline-block; padding: 4px 10px; border-radius: 20px; margin: 3px; font-size: 0.6rem; text-transform: uppercase; font-weight: bold; color: white; }
-
-        .action-btn { display: block; width: 100%; background: var(--rotom-red); color: white; border: none; padding: 12px; border-radius: 30px; font-family: 'Orbitron'; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        /* Buttons */
+        .action-btn { display: block; width: 100%; background: var(--rotom-red); color: white; border: none; padding: 12px; border-radius: 30px; font-family: 'Orbitron'; font-weight: bold; margin-top: 10px; cursor: pointer; transition: 0.2s; }
         .secondary-btn { background: #333; color: #aaa; font-size: 0.6rem; margin-top: 5px; padding: 8px; width: 100%; border: none; border-radius: 20px; font-family: 'Orbitron'; cursor: pointer;}
+
+        /* Navigation Filters */
+        .filter-row { display: flex; gap: 5px; margin: 10px 0; }
+        .filter-btn { flex: 1; padding: 10px; font-size: 0.6rem; background: #222; border: 1px solid #444; color: white; font-family: 'Orbitron'; border-radius: 5px; cursor: pointer; text-transform: uppercase; }
+        .filter-btn.active { border-color: var(--rotom-blue); color: var(--rotom-blue); }
         
-        .utility-row { display: flex; gap: 5px; margin-top: 10px; }
-        .util-btn { flex: 1; padding: 8px; font-size: 0.55rem; background: #222; border: 1px solid #444; color: white; border-radius: 5px; font-family: 'Orbitron'; cursor: pointer; }
-        .util-btn.danger { color: #ff5555; border-color: #ff5555; }
-        .util-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        #type-trigger-btn { font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); transition: background 0.3s ease; }
 
-        .filter-group { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
-        .filter-btn { flex: 1; padding: 10px; font-size: 0.65rem; background: #222; border: 1px solid #444; color: white; font-family: 'Orbitron'; border-radius: 5px; transition: 0.2s; }
-        .filter-btn.active { border-color: var(--rotom-blue); color: var(--rotom-blue); background: #2a2a2a; }
+        /* Type Grid for Overlay */
+        .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 15px 0; }
+        .type-pill { padding: 10px 5px; border-radius: 10px; font-size: 0.55rem; text-transform: uppercase; font-weight: bold; color: white; text-align: center; cursor: pointer; opacity: 0.4; border: 2px solid transparent; }
+        .type-pill.active { opacity: 1; border-color: white; }
 
-        .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 20px; }
-        .dex-card { 
-            background: var(--card-bg); padding: 8px; border-radius: 10px; 
-            text-align: center; border: 1px solid #3d3d3d; position: relative; 
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.3); cursor: pointer;
-        }
+        /* Collection Grid */
+        .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 10px; margin-top: 15px; }
+        .dex-card { background: var(--card-bg); padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #3d3d3d; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); cursor: pointer; }
         .dex-card img { width: 100%; height: 70px; object-fit: contain; }
         .dex-card.locked img { filter: brightness(0) opacity(0.25); }
-        .dex-card.locked strong { color: #555; }
 
-        #overwrite-overlay, #picker-overlay, #confirm-overlay {
-            position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9);
-            display:none; z-index: 2000; justify-content: center; align-items: center;
-        }
-        #picker-overlay { flex-direction: column; padding: 20px; box-sizing: border-box; justify-content: flex-start; }
+        /* Overlays */
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:none; z-index: 2000; flex-direction: column; padding: 20px; box-sizing: border-box; justify-content: center; align-items: center; }
         .modal { background: var(--panel-bg); padding: 20px; border-radius: 20px; border: 2px solid var(--rotom-red); width: 85%; text-align: center; }
-
+        .search-input { width:100%; padding:12px; background:#222; border:1px solid #444; color:white; font-family:'Orbitron'; border-radius: 5px; box-sizing: border-box; }
+        
         canvas { display: none; }
     </style>
 </head>
 <body>
 
     <div id="scanner-page" class="page active">
+        <h2 style="text-align: center; color: var(--rotom-red); margin-top: 0; letter-spacing: 2px;">POKÉMON SNAP</h2>
         <div id="scanner-container">
             <video id="video" autoplay playsinline></video>
             <div id="scan-line" class="scan-line" style="display:none;"></div>
         </div>
-        <button class="action-btn" onclick="captureAndIdentify()">SCAN</button>
+        <button id="scan-btn" class="action-btn" onclick="captureAndIdentify()">SCAN</button>
         
         <div id="result-panel" class="result-panel">
-            <div class="res-header">
-                <h2 id="res-name" style="margin:0; font-size: 1rem;">---</h2>
-                <span id="res-no" style="color: var(--rotom-red); font-size: 0.8rem;">#000</span>
-            </div>
+            <div id="res-types" style="text-align:center; margin-bottom: 10px;"></div>
             <div class="image-comparison">
-                <div class="image-box">
-                    <img id="res-img-user" src="">
-                    <label id="res-label-user">CAPTURE</label>
-                </div>
-                <div class="image-box">
-                    <img id="res-img-dex" src="">
-                    <label>DATABASE</label>
-                </div>
+                <div class="image-box"><img id="res-img-user" src=""><label id="res-label-user">CAPTURE</label></div>
+                <div class="image-box"><img id="res-img-dex" src=""><label>DATABASE</label></div>
             </div>
-            <div id="res-types" style="text-align:center;"></div>
-            <p id="res-desc" style="font-size: 0.7rem; line-height: 1.3; color: #bbb;"></p>
-            
-            <div class="utility-row">
-                <button class="util-btn" id="dl-btn" onclick="downloadPhoto()">DOWNLOAD</button>
-                <button class="util-btn danger" id="del-btn" onclick="showDeleteConfirm()">DELETE</button>
-            </div>
-            <button class="secondary-btn" id="fix-btn" onclick="openManualPicker(true)">Manual Fix</button>
+            <h2 id="res-name" style="text-align:center; margin:10px 0;">---</h2>
+            <p id="res-desc" style="font-size: 0.7rem; color: #bbb; text-align: center;"></p>
+            <button class="action-btn" onclick="downloadPhoto()">DOWNLOAD PHOTO</button>
+            <button class="secondary-btn" onclick="showDeleteConfirm()" style="color: #ff5555;">DELETE ENTRY</button>
+            <button class="secondary-btn" onclick="openManualPicker(true)">MANUAL CORRECTION</button>
         </div>
     </div>
 
     <div id="pokedex-page" class="page">
-        <input type="text" id="dex-search" placeholder="Search..." style="width:100%; padding:12px; background:#222; border:1px solid #444; color:white; font-family:'Orbitron'; border-radius: 5px;" onkeyup="renderDex()">
-        <div class="filter-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span id="stats-counter" style="font-size: 0.7rem; color: var(--rotom-blue);">0 / 0</span>
+            <button class="filter-btn" id="sort-btn" onclick="toggleSort()" style="max-width: 100px;">SORT: NUM</button>
+        </div>
+        
+        <input type="text" id="dex-search" class="search-input" placeholder="Search Collection..." onkeyup="renderDex()">
+        
+        <div class="filter-row">
             <button class="filter-btn active" id="f-all" onclick="setFilter('all')">ALL</button>
             <button class="filter-btn" id="f-caught" onclick="setFilter('caught')">CAUGHT</button>
             <button class="filter-btn" id="f-missing" onclick="setFilter('missing')">MISSING</button>
         </div>
+
+        <button class="filter-btn" id="type-trigger-btn" style="width: 100%; margin-top: 5px;" onclick="document.getElementById('type-overlay').style.display='flex'">
+            FILTER BY TYPE
+        </button>
+
         <div id="dex-grid" class="dex-grid"></div>
     </div>
 
-    <div id="overwrite-overlay">
-        <div class="modal">
-            <h3>Conflict</h3>
-            <p id="conflict-msg">Already have a photo for <span id="conflict-name"></span>.</p>
-            <button class="action-btn" onclick="confirmOverwrite(true)">REPLACE</button>
-            <button class="secondary-btn" onclick="confirmOverwrite(false)">KEEP OLD</button>
-            <button class="secondary-btn" style="color:var(--rotom-blue);" onclick="triggerManualFromConflict()">WRONG POKEMON</button>
+    <div id="type-overlay" class="overlay">
+        <div class="modal" style="width: 95%; max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-top: 0; color: var(--rotom-blue);">SELECT TYPES</h3>
+            <div class="type-grid" id="type-grid-container"></div>
+            <button class="action-btn" onclick="document.getElementById('type-overlay').style.display='none'">APPLY</button>
+            <button class="secondary-btn" onclick="clearTypeFilters()">CLEAR ALL</button>
         </div>
     </div>
 
-    <div id="confirm-overlay">
+    <div id="picker-overlay" class="overlay" style="justify-content: flex-start;">
+        <button class="secondary-btn" onclick="document.getElementById('picker-overlay').style.display='none'" style="margin-bottom: 10px;">BACK</button>
+        <input type="text" id="picker-search" class="search-input" placeholder="Search name..." onkeyup="renderPickerList()">
+        <div id="picker-list" class="dex-grid" style="width: 100%; overflow-y: scroll;"></div>
+    </div>
+    
+    <div id="confirm-overlay" class="overlay">
         <div class="modal">
             <h3>Delete?</h3>
             <button class="action-btn" onclick="deleteCapturedPhoto()">CONFIRM</button>
             <button class="secondary-btn" onclick="document.getElementById('confirm-overlay').style.display='none'">CANCEL</button>
         </div>
     </div>
-
-    <div id="picker-overlay">
-        <button class="secondary-btn" onclick="document.getElementById('picker-overlay').style.display='none'" style="margin-bottom:10px; width: 80px;">BACK</button>
-        <div id="picker-list" class="dex-grid" style="overflow-y: scroll; width: 100%;"></div>
+    
+    <div id="overwrite-overlay" class="overlay">
+        <div class="modal">
+            <h3 style="margin:0;">CONFLICT</h3>
+            <p style="font-size: 0.8rem; margin: 10px 0;">Already have a photo for:</p>
+            <div style="background:#111; padding:10px; border-radius:10px; margin-bottom:15px; border: 1px solid #444;">
+                <img id="conflict-img" src="" style="width:80px; height:80px; object-fit:contain; display:block; margin: 0 auto;">
+                <strong id="conflict-name" style="color:var(--rotom-blue); display:block; margin-top:5px;">---</strong>
+            </div>
+            <button class="action-btn" onclick="confirmOverwrite(true)">REPLACE PHOTO</button>
+            <button class="secondary-btn" onclick="confirmOverwrite(false)">KEEP CURRENT</button>
+            <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
+            <button class="secondary-btn" style="color:var(--rotom-red);" onclick="triggerManualFromConflict()">WRONG POKEMON?</button>
+        </div>
     </div>
 
     <nav class="bottom-nav">
@@ -179,10 +175,14 @@
     <script>
         let POKEMON_DB = {};
         let currentFilter = 'all';
-        let currentDisplayedPokemon = ""; 
-        let tempPhoto = ""; 
-        let shouldDeleteOnManual = false; 
-        let isRendering = false; 
+        let currentSort = 'num';
+        let selectedTypes = [];
+        let isRendering = false;
+        let currentDisplayedPokemon = "";
+        let tempPhoto = "";
+        let shouldDeleteOnManual = false;
+
+        const TYPES = ['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
 
         async function init() {
             try {
@@ -190,7 +190,194 @@
                 POKEMON_DB = await res.json();
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 document.getElementById('video').srcObject = stream;
-            } catch (e) { console.error(e); }
+                generateTypeGrid();
+            } catch (e) { console.error("Initialization Error:", e); }
+        }
+
+        async function captureAndIdentify() {
+            const btn = document.getElementById('scan-btn');
+            btn.disabled = true; btn.innerText = "PROCESSING...";
+            document.getElementById('scan-line').style.display = "block";
+            
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 640; canvas.height = (video.videoHeight / video.videoWidth) * 640;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            tempPhoto = canvas.toDataURL('image/jpeg', 0.8);
+
+            try {
+                const res = await fetch('/upload', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ image: tempPhoto }) 
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    await checkAndSave(data.name, tempPhoto, POKEMON_DB[data.name]);
+                } else {
+                    alert("Could not identify target.");
+                }
+            } catch (e) { console.error("Upload Error:", e); } finally {
+                btn.disabled = false; btn.innerText = "SCAN";
+                document.getElementById('scan-line').style.display = "none";
+            }
+        }
+
+        async function checkAndSave(name, photo, dataObj) {
+            currentDisplayedPokemon = name;
+            const existing = await localforage.getItem(name);
+            if (existing) {
+                document.getElementById('conflict-name').innerText = name;
+                document.getElementById('conflict-img').src = `/static/Full Pokemon/${name}.png`;
+                document.getElementById('overwrite-overlay').style.display = 'flex';
+            } else {
+                await localforage.setItem(name, photo);
+                displayResult(name, photo, dataObj);
+            }
+        }
+
+        async function confirmOverwrite(overwrite) {
+            document.getElementById('overwrite-overlay').style.display = 'none';
+            if (overwrite) await localforage.setItem(currentDisplayedPokemon, tempPhoto);
+            const finalImg = await localforage.getItem(currentDisplayedPokemon);
+            displayResult(currentDisplayedPokemon, finalImg, POKEMON_DB[currentDisplayedPokemon]);
+        }
+
+        function triggerManualFromConflict() {
+            document.getElementById('overwrite-overlay').style.display = 'none';
+            openManualPicker(false); 
+        }
+
+        function displayResult(name, userImg, data) {
+            if(!data) return;
+            currentDisplayedPokemon = name;
+            document.getElementById('result-panel').style.display = 'block';
+            document.getElementById('res-name').innerText = name;
+            document.getElementById('res-desc').innerText = data.description;
+            document.getElementById('res-img-dex').src = `/static/Full Pokemon/${name}.png`;
+            
+            const imgUser = document.getElementById('res-img-user');
+            const labelUser = document.getElementById('res-label-user');
+            
+            if (userImg) { 
+                imgUser.src = userImg; 
+                imgUser.classList.remove('missing-photo');
+                labelUser.innerText = "CAPTURE";
+            } else { 
+                imgUser.src = `/static/Full Pokemon/${name}.png`; 
+                imgUser.classList.add('missing-photo');
+                labelUser.innerText = "NOT CAUGHT";
+            }
+
+            const container = document.getElementById('res-types');
+            container.innerHTML = '';
+            data.types.forEach(t => {
+                const span = document.createElement('span');
+                span.className = 'type-pill active';
+                span.style.backgroundColor = `var(--${t.toLowerCase()})`;
+                span.style.opacity = "1"; span.style.padding = "4px 10px";
+                span.innerText = t; container.appendChild(span);
+            });
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        async function renderDex() {
+            if (isRendering) return;
+            isRendering = true;
+            const grid = document.getElementById('dex-grid');
+            const search = document.getElementById('dex-search').value.toLowerCase();
+            grid.innerHTML = '';
+            
+            let items = Object.entries(POKEMON_DB);
+            if (currentSort === 'num') items.sort((a,b) => parseInt(a[1].number.replace('#','')) - parseInt(b[1].number.replace('#','')));
+            else items.sort((a,b) => a[0].localeCompare(b[0]));
+
+            const fragment = document.createDocumentFragment();
+            let caught = 0; let visible = 0;
+
+            for (const [name, info] of items) {
+                const userImg = await localforage.getItem(name);
+                const isCaught = !!userImg;
+                if (isCaught) caught++;
+
+                if (search && !name.toLowerCase().includes(search)) continue;
+                if (currentFilter === 'caught' && !isCaught) continue;
+                if (currentFilter === 'missing' && isCaught) continue;
+                if (selectedTypes.length > 0 && !selectedTypes.every(t => info.types.includes(t))) continue;
+
+                visible++;
+                const card = document.createElement('div');
+                card.className = `dex-card ${isCaught ? '' : 'locked'}`;
+                card.innerHTML = `<img src="${isCaught ? userImg : '/static/Full Pokemon/'+name+'.png'}" loading="lazy"><p style="font-size:0.5rem; margin:2px;">#${info.number}</p><strong>${isCaught ? name : '???' }</strong>`;
+                card.onclick = () => { showPage('scanner'); displayResult(name, userImg, info); };
+                fragment.appendChild(card);
+            }
+            document.getElementById('stats-counter').innerText = `${caught} / ${items.length} (Visible: ${visible})`;
+            grid.appendChild(fragment);
+            isRendering = false;
+        }
+
+        // --- Filters & UI Helpers ---
+        function generateTypeGrid() {
+            const container = document.getElementById('type-grid-container');
+            TYPES.forEach(t => {
+                const p = document.createElement('div');
+                p.className = 'type-pill';
+                p.style.backgroundColor = `var(--${t.toLowerCase()})`;
+                p.innerText = t;
+                p.id = `pill-${t}`;
+                p.onclick = () => toggleTypeFilter(t);
+                container.appendChild(p);
+            });
+        }
+
+        function toggleTypeFilter(type) {
+            const el = document.getElementById(`pill-${type}`);
+            if (selectedTypes.includes(type)) {
+                selectedTypes = selectedTypes.filter(t => t !== type);
+                el.classList.remove('active');
+            } else if (selectedTypes.length < 2) {
+                selectedTypes.push(type);
+                el.classList.add('active');
+            }
+            updateTypeButtonColor();
+            renderDex();
+        }
+
+        function updateTypeButtonColor() {
+            const btn = document.getElementById('type-trigger-btn');
+            if (selectedTypes.length === 0) {
+                btn.style.background = "#222"; btn.innerText = "FILTER BY TYPE";
+            } else if (selectedTypes.length === 1) {
+                const c = getComputedStyle(document.documentElement).getPropertyValue(`--${selectedTypes[0].toLowerCase()}`);
+                btn.style.background = c; btn.innerText = `TYPE: ${selectedTypes[0].toUpperCase()}`;
+            } else {
+                const c1 = getComputedStyle(document.documentElement).getPropertyValue(`--${selectedTypes[0].toLowerCase()}`);
+                const c2 = getComputedStyle(document.documentElement).getPropertyValue(`--${selectedTypes[1].toLowerCase()}`);
+                btn.style.background = `linear-gradient(90deg, ${c1} 50%, ${c2} 50%)`;
+                btn.innerText = `${selectedTypes[0].toUpperCase()} / ${selectedTypes[1].toUpperCase()}`;
+            }
+        }
+
+        function clearTypeFilters() {
+            selectedTypes = [];
+            document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('active'));
+            updateTypeButtonColor();
+            renderDex();
+        }
+
+        function setFilter(f) {
+            currentFilter = f;
+            document.querySelectorAll('.filter-row .filter-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('f-' + f).classList.add('active');
+            renderDex();
+        }
+
+        function toggleSort() {
+            currentSort = currentSort === 'num' ? 'alpha' : 'num';
+            document.getElementById('sort-btn').innerText = `SORT: ${currentSort.toUpperCase()}`;
+            renderDex();
         }
 
         function showPage(p) {
@@ -201,100 +388,46 @@
             if(p === 'pokedex') renderDex();
         }
 
-        async function captureAndIdentify() {
-            document.getElementById('scan-line').style.display = "block";
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 640;
-            canvas.height = (video.videoHeight / video.videoWidth) * 640;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            tempPhoto = canvas.toDataURL('image/jpeg', 0.8);
-
-            try {
-                const res = await fetch('/upload', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ image: tempPhoto })
-                });
-                const data = await res.json();
-                document.getElementById('scan-line').style.display = "none";
-                if (res.ok) checkAndSave(data.name, tempPhoto, data);
-            } catch (e) { console.error(e); }
+        function openManualPicker(del) {
+            shouldDeleteOnManual = del;
+            document.getElementById('picker-overlay').style.display = 'flex';
+            renderPickerList();
         }
 
-        async function checkAndSave(name, photo, dataObj) {
-            const existing = await localforage.getItem(name);
-            currentDisplayedPokemon = name;
-            if (existing) {
-                document.getElementById('conflict-name').innerText = name;
-                document.getElementById('overwrite-overlay').style.display = 'flex';
-            } else {
-                await localforage.setItem(name, photo);
-                displayResult(name, photo, dataObj);
-            }
-        }
+        function renderPickerList() {
+            const list = document.getElementById('picker-list');
+            const s = document.getElementById('picker-search').value.toLowerCase();
+            list.innerHTML = '';
+            Object.entries(POKEMON_DB).forEach(([name, info]) => {
+                if (s && !name.toLowerCase().includes(s)) return;
+                const d = document.createElement('div');
+                d.className = 'dex-card';
+                d.innerHTML = `<img src="/static/Full Pokemon/${name}.png"><p>${name}</p>`;
+                
+                // This is where the core logic change lives
+                d.onclick = async () => {
+                    document.getElementById('picker-overlay').style.display = 'none';
+                    
+                    let targetPhoto = tempPhoto; 
+                    
+                    // If moving an old entry, fetch the saved photo before deleting it
+                    if (shouldDeleteOnManual) {
+                        const savedPhoto = await localforage.getItem(currentDisplayedPokemon);
+                        if (savedPhoto) targetPhoto = savedPhoto;
+                    }
 
-        async function confirmOverwrite(overwrite) {
-            if (overwrite) await localforage.setItem(currentDisplayedPokemon, tempPhoto);
-            document.getElementById('overwrite-overlay').style.display = 'none';
-            const img = await localforage.getItem(currentDisplayedPokemon);
-            displayResult(currentDisplayedPokemon, img, POKEMON_DB[currentDisplayedPokemon]);
-        }
+                    // Keep tempPhoto synced in case the target Pokemon causes an overwrite conflict
+                    tempPhoto = targetPhoto;
 
-        function triggerManualFromConflict() {
-            document.getElementById('overwrite-overlay').style.display = 'none';
-            openManualPicker(false);
-        }
-
-        function displayResult(name, userImg, data) {
-            currentDisplayedPokemon = name;
-            document.getElementById('result-panel').style.display = 'block';
-            document.getElementById('res-name').innerText = name;
-            document.getElementById('res-no').innerText = data.number;
-            document.getElementById('res-desc').innerText = data.description;
-            document.getElementById('res-img-dex').src = `/static/Full Pokemon/${name}.png`;
-
-            const imgUser = document.getElementById('res-img-user');
-            const labelUser = document.getElementById('res-label-user');
-            const dlBtn = document.getElementById('dl-btn');
-            const delBtn = document.getElementById('del-btn');
-            const fixBtn = document.getElementById('fix-btn');
-
-            if (userImg) {
-                imgUser.src = userImg;
-                imgUser.classList.remove('missing-photo');
-                labelUser.innerText = "CAPTURE";
-                dlBtn.disabled = false;
-                delBtn.disabled = false;
-                fixBtn.style.display = "block";
-            } else {
-                imgUser.src = `/static/Full Pokemon/${name}.png`;
-                imgUser.classList.add('missing-photo');
-                labelUser.innerText = "NOT CAUGHT";
-                dlBtn.disabled = true;
-                delBtn.disabled = true;
-                fixBtn.style.display = "none";
-            }
-
-            const container = document.getElementById('res-types');
-            container.innerHTML = '';
-            data.types.forEach(t => {
-                const span = document.createElement('span');
-                span.className = 'type-pill';
-                span.style.backgroundColor = `var(--${t.toLowerCase()})`;
-                span.innerText = t;
-                container.appendChild(span);
+                    if (shouldDeleteOnManual) {
+                        await localforage.removeItem(currentDisplayedPokemon);
+                    }
+                    
+                    await checkAndSave(name, tempPhoto, info);
+                };
+                list.appendChild(d);
             });
         }
-
-        function downloadPhoto() {
-            const link = document.createElement('a');
-            link.download = `${currentDisplayedPokemon}.jpg`;
-            link.href = document.getElementById('res-img-user').src;
-            link.click();
-        }
-
-        function showDeleteConfirm() { document.getElementById('confirm-overlay').style.display = 'flex'; }
 
         async function deleteCapturedPhoto() {
             await localforage.removeItem(currentDisplayedPokemon);
@@ -303,63 +436,11 @@
             renderDex();
         }
 
-        function openManualPicker(deletionNeeded) {
-            shouldDeleteOnManual = deletionNeeded;
-            document.getElementById('picker-overlay').style.display = 'flex';
-            renderPickerList();
-        }
-
-        function renderPickerList() {
-            const list = document.getElementById('picker-list');
-            list.innerHTML = '';
-            Object.entries(POKEMON_DB).sort((a,b) => parseInt(a[1].number.replace('#','')) - parseInt(b[1].number.replace('#',''))).forEach(([name, info]) => {
-                const div = document.createElement('div');
-                div.className = 'dex-card';
-                div.innerHTML = `<img src="/static/Full Pokemon/${name}.png"><p>${name}</p>`;
-                div.onclick = async () => {
-                    document.getElementById('picker-overlay').style.display = 'none';
-                    if (shouldDeleteOnManual) await localforage.removeItem(currentDisplayedPokemon);
-                    currentDisplayedPokemon = name; 
-                    checkAndSave(name, tempPhoto, info);
-                };
-                list.appendChild(div);
-            });
-        }
-
-        function setFilter(f) {
-            currentFilter = f;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('f-' + f).classList.add('active');
-            renderDex();
-        }
-
-        async function renderDex() {
-            if (isRendering) return;
-            isRendering = true;
-            const grid = document.getElementById('dex-grid');
-            const search = document.getElementById('dex-search').value.toLowerCase();
-            grid.innerHTML = '';
-            const sorted = Object.entries(POKEMON_DB).sort((a,b) => parseInt(a[1].number.replace('#','')) - parseInt(b[1].number.replace('#','')));
-            const fragment = document.createDocumentFragment();
-
-            for (const [name, info] of sorted) {
-                const userImg = await localforage.getItem(name);
-                const isCaught = !!userImg;
-                if (search && !name.toLowerCase().includes(search)) continue;
-                if (currentFilter === 'caught' && !isCaught) continue;
-                if (currentFilter === 'missing' && isCaught) continue;
-
-                const card = document.createElement('div');
-                card.className = `dex-card ${isCaught ? '' : 'locked'}`;
-                card.innerHTML = `<img src="${isCaught ? userImg : '/static/Full Pokemon/'+name+'.png'}" loading="lazy"><p>#${info.number}</p><strong>${isCaught ? name : '???' }</strong>`;
-                card.onclick = () => { 
-                    showPage('scanner'); 
-                    displayResult(name, userImg, info); 
-                };
-                fragment.appendChild(card);
-            }
-            grid.appendChild(fragment);
-            isRendering = false;
+        function showDeleteConfirm() { document.getElementById('confirm-overlay').style.display = 'flex'; }
+        
+        function downloadPhoto() {
+            const a = document.createElement('a'); a.download = `${currentDisplayedPokemon}.jpg`;
+            a.href = document.getElementById('res-img-user').src; a.click();
         }
 
         init();
