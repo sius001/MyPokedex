@@ -20,6 +20,8 @@ except FileNotFoundError:
     print("CRITICAL: PokemonData.json not found! Run the scraper script first.")
     POKEMON_DB = {}
 
+print(POKEMON_DB.keys())
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -45,19 +47,24 @@ def upload_image():
         
         # Step 3: Match Name
         visual_matches = results.get("visual_matches", [])
-        titles = [match.get("title", "").lower() for match in visual_matches]
-        all_words = " ".join(titles).replace(",", " ").split()
+        titles = [match.get("title", "").title() for match in visual_matches]
+        all_words = ", ".join(titles).title()
         
+        print(all_words)
+
         # Compare against our local keys
         match_found = None
-        for word in all_words:
-            capital_word = word.capitalize()
-            if capital_word in POKEMON_DB:
-                match_found = capital_word
-                break
+        matches = []
+        for pokemon in list(POKEMON_DB.keys()):
+            for i in range(all_words.count(pokemon)):
+                matches.append(pokemon)
 
-        if not match_found:
+        print(matches)
+
+        if not matches:
             return jsonify({'error': 'Pokemon not recognized'}), 404
+        else:
+            match_found = max(set(matches), key=matches.count)
 
         # Step 4: GET DATA FROM LOCAL DB
         pokemon_info = POKEMON_DB[match_found]
