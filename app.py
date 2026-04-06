@@ -7,8 +7,13 @@ from flask import Flask, request, jsonify, render_template
 app = Flask(__name__)
 
 # --- KEYS (ENSURE THESE ARE CORRECT) ---
-SERPAPI_KEY = "4d2aba90b29c07b833c32e9188908d11299ef2126e50dab873ee41bf25d3d7e7"
-IMGBB_KEY = "58f4278c0df1a7a54c5ae3135d115031"
+SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
+IMGBB_KEY = os.environ.get("IMGBB_KEY")
+
+if not SERPAPI_KEY:
+    SERPAPI_KEY = "cd37871fc3507f20cadf7dffcf962a45fae7bc4734e2fc6e777587fcf11a0210"
+if not IMGBB_KEY:
+    IMGBB_KEY = "58f4278c0df1a7a54c5ae3135d115031"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 1. LOAD LOCAL DATABASE ON STARTUP
@@ -19,8 +24,6 @@ try:
 except FileNotFoundError:
     print("CRITICAL: PokemonData.json not found! Run the scraper script first.")
     POKEMON_DB = {}
-
-print(POKEMON_DB.keys())
 
 @app.route('/')
 def index():
