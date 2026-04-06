@@ -2,278 +2,344 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rotom Pokedex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rotom Dex: Master Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    
     <style>
         :root {
-            --pd-red: #e3350d;
-            --pd-dark: #a12308;
-            --pd-screen: #232323;
-            --pd-lcd: #98cbff;
+            --rotom-red: #FF5350; --rotom-blue: #00E5FF; --bg-dark: #121212; --panel-bg: #1e1e1e;
+            --normal: #A8A77A; --fire: #EE8130; --water: #6390F0; --electric: #F7D02C;
+            --grass: #7AC74C; --ice: #96D9D6; --fighting: #C22E28; --poison: #A33EA1;
+            --ground: #E2BF65; --flying: #A98FF3; --psychic: #F95587; --bug: #A6B91A;
+            --rock: #B6A136; --ghost: #735797; --dragon: #6F35FC; --dark: #705746;
+            --steel: #B7B7CE; --fairy: #D685AD;
         }
 
-        body {
-            background-color: #1a1a1a;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        body { font-family: 'Orbitron', sans-serif; background-color: var(--bg-dark); color: white; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
+
+        /* --- NAVIGATION --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; width: 100%; height: 70px;
+            background: #1a1a1a; display: flex; justify-content: space-around;
+            align-items: center; border-top: 3px solid var(--rotom-red); z-index: 1000;
         }
+        .nav-btn { background: none; border: none; color: #666; font-family: 'Orbitron'; cursor: pointer; font-size: 0.7rem; }
+        .nav-btn.active { color: var(--rotom-blue); }
 
-        /* Pokedex Chassis */
-        .pokedex {
-            width: 340px;
-            background-color: var(--pd-red);
-            border-radius: 10px 10px 10px 40px;
-            border: 4px solid var(--pd-dark);
-            padding: 25px;
-            box-shadow: 12px 12px 0px rgba(0,0,0,0.5);
-            position: relative;
+        .page { display: none; padding: 15px; animation: fadeIn 0.2s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- SCANNER & RESULTS --- */
+        #scanner-container {
+            width: 100%; max-width: 500px; margin: 0 auto;
+            border: 4px solid var(--rotom-blue); border-radius: 15px;
+            position: relative; background: #000; overflow: hidden;
         }
-
-        /* Decorative Blue Lens */
-        .pokedex::before {
-            content: "";
-            position: absolute;
-            top: 10px; left: 15px;
-            width: 35px; height: 35px;
-            background: radial-gradient(circle, #85d0ff, #2a75bb);
-            border: 4px solid white;
-            border-radius: 50%;
+        video { width: 100%; display: block; }
+        .scan-line {
+            position: absolute; top: 0; width: 100%; height: 4px;
+            background: var(--rotom-blue); box-shadow: 0 0 15px var(--rotom-blue);
+            animation: scan 2s linear infinite;
         }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
 
-        /* Screen Bezel */
-        .bezel {
-            background-color: #dedede;
-            padding: 15px;
-            border-radius: 8px 8px 8px 30px;
-            border: 3px solid #555;
-            margin-top: 30px;
-            margin-bottom: 20px;
-        }
-
-        #display-screen {
-            background-color: var(--pd-screen);
-            height: 280px;
-            border-radius: 5px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            border: 2px solid #333;
-        }
-
-        video { width: 100%; height: 100%; object-fit: cover; }
-        
-        #info-display {
-            width: 100%;
-            height: 100%;
-            background-color: var(--pd-lcd);
-            display: none;
-            text-align: center;
-            padding-top: 10px;
-        }
-
-        #pokemon-img {
-            height: 120px;
-            margin-bottom: 5px;
-            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
-        }
-
-        #dex-num { font-weight: bold; font-size: 14px; color: #333; }
-        
-        /* Type Badges Styling */
-        .type-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            margin: 2px;
-            border-radius: 15px;
-            color: white;
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: bold;
-            border: 1px solid rgba(0,0,0,0.1);
-            text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
-        }
-
-        #description-box {
-            font-size: 11px;
-            padding: 10px;
-            margin: 10px 15px;
-            background: rgba(255,255,255,0.5);
-            border-radius: 5px;
-            max-height: 60px;
-            overflow-y: auto;
-            color: #222;
-            line-height: 1.2;
-            text-align: left;
-        }
-
-        /* Name Display */
-        #name-plate {
-            background-color: #51ad60; /* Classic Gameboy Green */
-            color: #0c1e0c;
-            padding: 10px;
-            border-radius: 5px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            border: 2px solid #222;
-            text-align: center;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 18px;
-        }
-
-        /* Buttons */
-        .btn-group { display: flex; flex-direction: column; gap: 8px; }
-
-        button {
-            padding: 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            border: 2px solid #222;
-            text-transform: uppercase;
-            transition: 0.1s;
-        }
-
-        #scan-btn { background-color: #333; color: white; }
-        #scan-btn:hover { background-color: #444; }
-
-        #details-btn {
-            background-color: #ffcb05; 
-            color: #2a75bb;
+        .result-panel {
+            background: var(--panel-bg); border-radius: 20px;
+            padding: 15px; margin-top: 15px; border: 2px solid #333;
             display: none;
         }
+        .res-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--rotom-red); padding-bottom: 8px; }
+        
+        .image-comparison { display: flex; gap: 8px; margin: 12px 0; }
+        .image-box { flex: 1; text-align: center; background: #111; padding: 8px; border-radius: 10px; border: 1px solid #444; position: relative; }
+        .image-box img { width: 100%; height: 110px; object-fit: contain; }
+        .image-box label { font-size: 0.5rem; color: var(--rotom-blue); display: block; margin-top: 4px; }
 
-        #reset-btn { 
-            background: none; 
-            border: none; 
-            color: #fff; 
-            text-decoration: underline; 
-            font-size: 12px; 
-            padding: 5px;
+        .type-pill { display: inline-block; padding: 4px 10px; border-radius: 20px; margin: 3px; font-size: 0.6rem; text-transform: uppercase; font-weight: bold; color: white; }
+
+        .action-btn { display: block; width: 100%; background: var(--rotom-red); color: white; border: none; padding: 12px; border-radius: 30px; font-family: 'Orbitron'; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .secondary-btn { background: #333; color: #aaa; font-size: 0.6rem; margin-top: 5px; padding: 8px; width: 100%; border: none; border-radius: 20px; font-family: 'Orbitron'; cursor: pointer;}
+        
+        .utility-row { display: flex; gap: 5px; margin-top: 10px; }
+        .util-btn { flex: 1; padding: 8px; font-size: 0.55rem; background: #222; border: 1px solid #444; color: white; border-radius: 5px; font-family: 'Orbitron'; cursor: pointer; }
+        .util-btn.danger { color: #ff5555; border-color: #ff5555; }
+
+        /* --- POKEDEX GRID & FILTERS --- */
+        .filter-group { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
+        .filter-btn { flex: 1; padding: 10px; font-size: 0.65rem; background: #222; border: 1px solid #444; color: white; font-family: 'Orbitron'; border-radius: 5px; transition: 0.2s; }
+        .filter-btn.active { border-color: var(--rotom-blue); color: var(--rotom-blue); background: #2a2a2a; }
+
+        .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 20px; }
+        .dex-card { background: var(--panel-bg); padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #333; position: relative; }
+        .dex-card img { width: 100%; height: 70px; object-fit: contain; }
+        .dex-card.locked img { filter: brightness(0); opacity: 0.4; }
+
+        /* --- OVERLAYS --- */
+        #overwrite-overlay, #picker-overlay, #confirm-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9);
+            display:none; z-index: 2000; justify-content: center; align-items: center;
         }
+        #picker-overlay { flex-direction: column; padding: 20px; box-sizing: border-box; justify-content: flex-start; }
+        .modal { background: var(--panel-bg); padding: 20px; border-radius: 20px; border: 2px solid var(--rotom-red); width: 85%; text-align: center; }
 
+        canvas { display: none; }
     </style>
 </head>
 <body>
 
-<div class="pokedex">
-    <div class="bezel">
-        <div id="display-screen">
-            <video id="webcam" autoplay playsinline></video>
-            <div id="info-display">
-                <div id="dex-num">#---</div>
-                <img id="pokemon-img" src="" alt="Pokemon">
-                <div id="type-list"></div>
-                <div id="description-box">Searching database...</div>
+    <div id="scanner-page" class="page active">
+        <div id="scanner-container">
+            <video id="video" autoplay playsinline></video>
+            <div id="scan-line" class="scan-line" style="display:none;"></div>
+        </div>
+        
+        <button class="action-btn" onclick="captureAndIdentify()">IDENTIFY TARGET</button>
+        <p id="status" style="text-align:center; font-size: 0.6rem; color: var(--rotom-blue); margin: 5px;">Rotom Dex: Ready</p>
+
+        <div id="result-panel" class="result-panel">
+            <div class="res-header">
+                <h2 id="res-name" style="margin:0; font-size: 1rem;">---</h2>
+                <span id="res-no" style="color: var(--rotom-red); font-size: 0.8rem;">#000</span>
             </div>
+            <div class="image-comparison">
+                <div class="image-box"><img id="res-img-user" src=""><label>CAPTURE</label></div>
+                <div class="image-box"><img id="res-img-dex" src=""><label>DATABASE</label></div>
+            </div>
+            <div id="res-types" style="text-align:center;"></div>
+            <p id="res-desc" style="font-size: 0.7rem; line-height: 1.3; color: #bbb;"></p>
+            
+            <div class="utility-row">
+                <button class="util-btn" onclick="downloadPhoto()">DOWNLOAD</button>
+                <button class="util-btn danger" onclick="showDeleteConfirm()">DELETE</button>
+            </div>
+            
+            <button class="secondary-btn" onclick="openManualPicker(true)">Wrong Pokémon? Correct Manually</button>
+            <a id="res-link" style="color: var(--rotom-blue); text-decoration: none; font-size: 0.65rem; display: block; text-align: center; margin-top:10px;" target="_blank">OFFICIAL DATA →</a>
         </div>
     </div>
 
-    <div id="name-plate">---</div>
-
-    <div class="btn-group">
-        <button id="scan-btn">Scan</button>
-        <button id="details-btn">Details</button>
-        <button id="reset-btn">Reset</button>
+    <div id="pokedex-page" class="page">
+        <input type="text" id="dex-search" placeholder="Search..." style="width:100%; padding:12px; background:#222; border:1px solid #444; color:white; font-family:'Orbitron'; border-radius: 5px;" onkeyup="renderDex()">
+        <div class="filter-group">
+            <button class="filter-btn active" id="f-all" onclick="setFilter('all')">ALL</button>
+            <button class="filter-btn" id="f-caught" onclick="setFilter('caught')">CAUGHT</button>
+            <button class="filter-btn" id="f-missing" onclick="setFilter('missing')">MISSING</button>
+        </div>
+        <div id="dex-grid" class="dex-grid"></div>
     </div>
-</div>
 
-<canvas id="hidden-canvas" width="640" height="480" style="display:none;"></canvas>
+    <div id="overwrite-overlay">
+        <div class="modal">
+            <h3 style="color:var(--rotom-red)">Data Conflict</h3>
+            <p id="conflict-msg" style="font-size:0.75rem">Already have a photo for <span id="conflict-name"></span>.</p>
+            <button class="action-btn" onclick="confirmOverwrite(true)">REPLACE PHOTO</button>
+            <button class="secondary-btn" onclick="confirmOverwrite(false)">KEEP OLD PHOTO</button>
+            <button class="secondary-btn" style="color:var(--rotom-blue); border-color:var(--rotom-blue);" onclick="triggerManualFromConflict()">WRONG POKEMON</button>
+        </div>
+    </div>
 
-<script>
-    const typeColors = {
-        "Normal": "#A8A77A", "Fire": "#EE8130", "Water": "#6390F0",
-        "Electric": "#F7D02C", "Grass": "#7AC74C", "Ice": "#96D9D6",
-        "Fighting": "#C22E28", "Poison": "#A33EA1", "Ground": "#E2BF65",
-        "Flying": "#A98FF3", "Psychic": "#F95587", "Bug": "#A6B91A",
-        "Rock": "#B6A136", "Ghost": "#735797", "Dragon": "#6F35FC",
-        "Dark": "#705746", "Steel": "#B7B7CE", "Fairy": "#D685AD"
-    };
+    <div id="confirm-overlay">
+        <div class="modal">
+            <h3 style="color:var(--rotom-red)">Delete Data?</h3>
+            <p style="font-size:0.75rem">Remove captured photo from Dex?</p>
+            <button class="action-btn" onclick="deleteCapturedPhoto()">CONFIRM DELETE</button>
+            <button class="secondary-btn" onclick="document.getElementById('confirm-overlay').style.display='none'">CANCEL</button>
+        </div>
+    </div>
 
-    const video = document.getElementById('webcam');
-    const infoDisplay = document.getElementById('info-display');
-    const pokemonImg = document.getElementById('pokemon-img');
-    const dexNum = document.getElementById('dex-num');
-    const typeList = document.getElementById('type-list');
-    const descBox = document.getElementById('description-box');
-    const namePlate = document.getElementById('name-plate');
-    const scanBtn = document.getElementById('scan-btn');
-    const detailsBtn = document.getElementById('details-btn');
-    const resetBtn = document.getElementById('reset-btn');
-    const canvas = document.getElementById('hidden-canvas');
+    <div id="picker-overlay">
+        <button class="secondary-btn" onclick="document.getElementById('picker-overlay').style.display='none'" style="margin-bottom:10px; width: 80px;">BACK</button>
+        <input type="text" id="picker-search" placeholder="Search correct name..." style="width:100%; padding:10px; background:#222; border:1px solid var(--rotom-blue); color:white; font-family:'Orbitron';" onkeyup="renderPickerList(this.value)">
+        <div id="picker-list" class="dex-grid" style="overflow-y: scroll; width: 100%;"></div>
+    </div>
 
-    let currentLink = "";
+    <nav class="bottom-nav">
+        <button class="nav-btn active" id="btn-scan" onclick="showPage('scanner')">SCANNER</button>
+        <button class="nav-btn" id="btn-dex" onclick="showPage('pokedex')">COLLECTION</button>
+    </nav>
 
-    // Replace your old getUserMedia line with this:
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
-            facingMode: "environment", // "environment" targets the back camera
-            width: { ideal: 640 },
-            height: { ideal: 480 }
-        } 
-    })
-    .then(stream => { 
-        video.srcObject = stream; 
-    })
-    .catch(err => { 
-        console.error("Camera Error: ", err);
-        namePlate.innerText = "CAMERA BLOCKED"; 
-    });
+    <canvas id="canvas"></canvas>
 
-    scanBtn.addEventListener('click', () => {
-        namePlate.innerText = "SCANNING...";
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL('image/png');
+    <script>
+        let POKEMON_DB = {};
+        let currentFilter = 'all';
+        let currentDisplayedPokemon = ""; 
+        let tempPhoto = ""; 
+        let shouldDeleteOnManual = false; 
+        let isRendering = false; // LOCK FLAG TO PREVENT DUPLICATES
 
-        fetch('/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: imageData })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data.error) throw new Error(data.error);
+        async function init() {
+            try {
+                const res = await fetch('/api/all_pokemon');
+                POKEMON_DB = await res.json();
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+            } catch (e) { console.error(e); }
+        }
 
-            video.style.display = 'none';
-            infoDisplay.style.display = 'block';
+        function showPage(p) {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(p + '-page').classList.add('active');
+            document.getElementById('btn-' + (p === 'scanner' ? 'scan' : 'dex')).classList.add('active');
+            if(p === 'pokedex') renderDex();
+        }
 
-            namePlate.innerText = data.name;
-            dexNum.innerText = data.number;
-            pokemonImg.src = data.image_url;
-            descBox.innerText = data.description;
-            
-            typeList.innerHTML = "";
+        async function captureAndIdentify() {
+            document.getElementById('scan-line').style.display = "block";
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 640;
+            canvas.height = (video.videoHeight / video.videoWidth) * 640;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            tempPhoto = canvas.toDataURL('image/jpeg', 0.8);
+
+            try {
+                const res = await fetch('/upload', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ image: tempPhoto })
+                });
+                const data = await res.json();
+                document.getElementById('scan-line').style.display = "none";
+
+                if (res.ok) {
+                    currentDisplayedPokemon = data.name;
+                    checkAndSave(data.name, tempPhoto, data);
+                } else { alert(data.error); }
+            } catch (e) { console.error(e); }
+        }
+
+        async function checkAndSave(name, photo, dataObj) {
+            const existing = await localforage.getItem(name);
+            if (existing) {
+                document.getElementById('conflict-name').innerText = name;
+                document.getElementById('overwrite-overlay').style.display = 'flex';
+            } else {
+                await localforage.setItem(name, photo);
+                displayResult(name, photo, dataObj);
+            }
+        }
+
+        async function confirmOverwrite(overwrite) {
+            if (overwrite) await localforage.setItem(currentDisplayedPokemon, tempPhoto);
+            document.getElementById('overwrite-overlay').style.display = 'none';
+            const finalImg = await localforage.getItem(currentDisplayedPokemon);
+            displayResult(currentDisplayedPokemon, finalImg, POKEMON_DB[currentDisplayedPokemon]);
+        }
+
+        function triggerManualFromConflict() {
+            document.getElementById('overwrite-overlay').style.display = 'none';
+            openManualPicker(false);
+        }
+
+        function displayResult(name, userImg, data) {
+            currentDisplayedPokemon = name;
+            document.getElementById('result-panel').style.display = 'block';
+            document.getElementById('res-name').innerText = name;
+            document.getElementById('res-no').innerText = data.number;
+            document.getElementById('res-desc').innerText = data.description;
+            document.getElementById('res-img-user').src = userImg;
+            document.getElementById('res-img-dex').src = `/static/Full Pokemon/${name}.png`;
+            document.getElementById('res-link').href = `https://www.pokemon.com/uk/pokedex/${name.toLowerCase()}`;
+
+            const container = document.getElementById('res-types');
+            container.innerHTML = '';
             data.types.forEach(t => {
                 const span = document.createElement('span');
-                span.className = 'type-badge';
+                span.className = 'type-pill';
+                span.style.backgroundColor = `var(--${t.toLowerCase()})`;
                 span.innerText = t;
-                span.style.backgroundColor = typeColors[t] || "#777";
-                typeList.appendChild(span);
+                container.appendChild(span);
             });
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
 
-            currentLink = data.pokedex_url;
-            detailsBtn.style.display = 'block';
-        })
-        .catch(err => {
-            namePlate.innerText = "UNKNOWN";
-            console.error(err);
-        });
-    });
+        function downloadPhoto() {
+            const link = document.createElement('a');
+            link.download = `${currentDisplayedPokemon}_captured.jpg`;
+            link.href = document.getElementById('res-img-user').src;
+            link.click();
+        }
 
-    detailsBtn.addEventListener('click', () => { if(currentLink) window.open(currentLink, '_blank'); });
+        function showDeleteConfirm() { document.getElementById('confirm-overlay').style.display = 'flex'; }
 
-    resetBtn.addEventListener('click', () => {
-        video.style.display = 'block';
-        infoDisplay.style.display = 'none';
-        detailsBtn.style.display = 'none';
-        namePlate.innerText = "---";
-    });
-</script>
+        async function deleteCapturedPhoto() {
+            await localforage.removeItem(currentDisplayedPokemon);
+            document.getElementById('confirm-overlay').style.display = 'none';
+            document.getElementById('result-panel').style.display = 'none';
+            renderDex();
+        }
+
+        function openManualPicker(deletionNeeded) {
+            shouldDeleteOnManual = deletionNeeded;
+            document.getElementById('picker-overlay').style.display = 'flex';
+            renderPickerList("");
+        }
+
+        function renderPickerList(f) {
+            const list = document.getElementById('picker-list');
+            list.innerHTML = '';
+            Object.entries(POKEMON_DB).sort((a,b) => parseInt(a[1].number.replace('#','')) - parseInt(b[1].number.replace('#',''))).forEach(([name, info]) => {
+                if (f && !name.toLowerCase().includes(f.toLowerCase())) return;
+                const div = document.createElement('div');
+                div.className = 'dex-card';
+                div.innerHTML = `<img src="/static/Full Pokemon/${name}.png"><p>${name}</p>`;
+                div.onclick = async () => {
+                    document.getElementById('picker-overlay').style.display = 'none';
+                    if (shouldDeleteOnManual) await localforage.removeItem(currentDisplayedPokemon);
+                    currentDisplayedPokemon = name; 
+                    checkAndSave(name, tempPhoto, info);
+                };
+                list.appendChild(div);
+            });
+        }
+
+        function setFilter(f) {
+            currentFilter = f;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('f-' + f).classList.add('active');
+            renderDex();
+        }
+
+        async function renderDex() {
+            if (isRendering) return; // Prevent overlapping renders
+            isRendering = true;
+
+            const grid = document.getElementById('dex-grid');
+            const search = document.getElementById('dex-search').value.toLowerCase();
+            
+            // Step 1: Wipe the grid completely
+            grid.innerHTML = '';
+            
+            const sorted = Object.entries(POKEMON_DB).sort((a,b) => parseInt(a[1].number.replace('#','')) - parseInt(b[1].number.replace('#','')));
+
+            // Step 2: Build the fragments
+            const fragment = document.createDocumentFragment();
+
+            for (const [name, info] of sorted) {
+                const userImg = await localforage.getItem(name);
+                const isCaught = !!userImg;
+                
+                if (search && !name.toLowerCase().includes(search)) continue;
+                if (currentFilter === 'caught' && !isCaught) continue;
+                if (currentFilter === 'missing' && isCaught) continue;
+
+                const card = document.createElement('div');
+                card.className = `dex-card ${isCaught ? '' : 'locked'}`;
+                card.innerHTML = `<img src="${isCaught ? userImg : '/static/Full Pokemon/'+name+'.png'}" loading="lazy"><p>#${info.number}</p><strong>${isCaught ? name : '???' }</strong>`;
+                
+                if(isCaught) card.onclick = () => { showPage('scanner'); displayResult(name, userImg, info); };
+                fragment.appendChild(card);
+            }
+            
+            grid.appendChild(fragment);
+            isRendering = false;
+        }
+
+        init();
+    </script>
 </body>
 </html>
