@@ -364,7 +364,6 @@
                 
                 if (isCaught) caught++;
 
-                // Combined Filters
                 if (search && !name.toLowerCase().includes(search)) continue;
                 if (currentFilter === 'caught' && !isCaught) continue;
                 if (currentFilter === 'missing' && isCaught) continue;
@@ -381,24 +380,50 @@
                     <strong>${isCaught ? name : '???' }</strong>
                 `;
                 
-                // Bulletproof Long Press
+                // --- SCROLL-AWARE LONG PRESS (1 SECOND) ---
                 let pressTimer;
+                let startX, startY;
+
                 const startPress = (e) => {
-                    pressTimer = window.setTimeout(() => toggleFavorite(name, card), 500);
+                    // Record starting position (handle both touch and mouse)
+                    const touch = e.touches ? e.touches[0] : e;
+                    startX = touch.pageX;
+                    startY = touch.pageY;
+
+                    // Set timer for 1 second (1000ms)
+                    pressTimer = window.setTimeout(() => {
+                        toggleFavorite(name, card);
+                        pressTimer = null; // Mark as triggered
+                    }, 1000);
                 };
-                const endPress = () => clearTimeout(pressTimer);
+
+                const movePress = (e) => {
+                    if (!pressTimer) return;
+                    const touch = e.touches ? e.touches[0] : e;
+                    
+                    // If finger moves more than 10px, it's a scroll, not a long press
+                    if (Math.abs(touch.pageX - startX) > 10 || Math.abs(touch.pageY - startY) > 10) {
+                        clearTimeout(pressTimer);
+                        pressTimer = null;
+                    }
+                };
+
+                const endPress = () => {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                };
 
                 card.onmousedown = card.ontouchstart = startPress;
+                card.onmousemove = card.ontouchmove = movePress; // Track movement
                 card.onmouseup = card.onmouseleave = card.ontouchend = endPress;
                 
-                // Block System Menus
                 card.oncontextmenu = (e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     return false;
                 };
 
                 card.onclick = (e) => {
+                    // Only open scanner if we didn't just finish a long-press
                     showPage('scanner'); 
                     displayResult(name, userImg, info); 
                 };
