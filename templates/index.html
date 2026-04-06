@@ -1,675 +1,89 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pokémon Snap</title>
-    
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#FF5350">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <link rel="icon" type="image/png" href="/static/icon-192.png">
+import os
+import json
+import requests
+import serpapi
+from flask import Flask, request, jsonify, render_template
 
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
-    
-    <style>
-        :root {
-            --rotom-red: #FF5350; --rotom-blue: #00E5FF; --bg-dark: #121212; --panel-bg: #1e1e1e;
-            --card-bg: #2a2a2a;
-            --normal: #A8A77A; --fire: #EE8130; --water: #6390F0; --electric: #F7D02C;
-            --grass: #7AC74C; --ice: #96D9D6; --fighting: #C22E28; --poison: #A33EA1;
-            --ground: #E2BF65; --flying: #A98FF3; --psychic: #F95587; --bug: #A6B91A;
-            --rock: #B6A136; --ghost: #735797; --dragon: #6F35FC; --dark: #705746;
-            --steel: #B7B7CE; --fairy: #D685AD;
-        }
+app = Flask(__name__)
 
-        body { font-family: 'Orbitron', sans-serif; background-color: var(--bg-dark); color: white; margin: 0; padding-bottom: 90px; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+# --- KEYS (ENSURE THESE ARE CORRECT) ---
+SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
+IMGBB_KEY = os.environ.get("IMGBB_KEY")
 
-        .bottom-nav {
-            position: fixed; bottom: 0; width: 100%; height: 70px;
-            background: #1a1a1a; display: flex; justify-content: space-around;
-            align-items: center; border-top: 3px solid var(--rotom-red); z-index: 1000;
-        }
-        .nav-btn { background: none; border: none; color: #666; font-family: 'Orbitron'; cursor: pointer; font-size: 0.7rem; }
-        .nav-btn.active { color: var(--rotom-blue); }
+if not SERPAPI_KEY:
+    SERPAPI_KEY = "cd37871fc3507f20cadf7dffcf962a45fae7bc4734e2fc6e777587fcf11a0210"
+if not IMGBB_KEY:
+    IMGBB_KEY = "58f4278c0df1a7a54c5ae3135d115031"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-        .page { display: none; padding: 15px; animation: fadeIn 0.2s ease; }
-        .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+# 1. LOAD LOCAL DATABASE ON STARTUP
+try:
+    with open(os.path.join(BASE_DIR, "PokemonData.json"), "r", encoding="utf-8") as f:
+        POKEMON_DB = json.load(f)
+    print("Local Pokedex Database Loaded!")
+except FileNotFoundError:
+    print("CRITICAL: PokemonData.json not found! Run the scraper script first.")
+    POKEMON_DB = {}
 
-        /* Scanner */
-        #scanner-container { width: 100%; max-width: 500px; margin: 0 auto; border: 4px solid var(--rotom-blue); border-radius: 15px; position: relative; background: #000; overflow: hidden; }
-        video { width: 100%; display: block; }
-        .scan-line { position: absolute; top: 0; width: 100%; height: 4px; background: var(--rotom-blue); box-shadow: 0 0 15px var(--rotom-blue); animation: scan 2s linear infinite; }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-        .result-panel { background: var(--panel-bg); border-radius: 20px; padding: 15px; margin-top: 15px; border: 2px solid #333; display: none; }
-        .image-comparison { display: flex; gap: 8px; margin: 12px 0; }
-        .image-box { flex: 1; text-align: center; background: #111; padding: 8px; border-radius: 10px; border: 1px solid #444; }
-        .image-box img { width: 100%; height: 110px; object-fit: contain; }
-        .missing-photo { filter: grayscale(1) opacity(0.2); }
+# NEW ROUTE: This serves the grid data to your new Pokedex tab
+@app.route('/api/all_pokemon')
+def get_all_pokemon():
+    return jsonify(POKEMON_DB)
 
-        /* Buttons */
-        .action-btn { display: block; width: 100%; background: var(--rotom-red); color: white; border: none; padding: 12px; border-radius: 30px; font-family: 'Orbitron'; font-weight: bold; margin-top: 10px; cursor: pointer; transition: 0.2s; }
-        .secondary-btn { background: #333; color: #aaa; font-size: 0.6rem; margin-top: 5px; padding: 8px; width: 100%; border: none; border-radius: 20px; font-family: 'Orbitron'; cursor: pointer;}
-
-        /* Navigation Filters */
-        .filter-row { display: flex; gap: 5px; margin: 10px 0; }
-        .filter-btn { flex: 1; padding: 10px; font-size: 0.6rem; background: #222; border: 1px solid #444; color: white; font-family: 'Orbitron'; border-radius: 5px; cursor: pointer; text-transform: uppercase; }
-        .filter-btn.active { border-color: var(--rotom-blue); color: var(--rotom-blue); }
+@app.route('/upload', methods=['POST'])
+def upload_image():
+    try:
+        data = request.get_json()
+        encoded_data = data['image'].split(',', 1)[1]
         
-        #type-trigger-btn { font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); transition: background 0.3s ease; }
+        # Step 1: Upload to ImgBB
+        res = requests.post("https://api.imgbb.com/1/upload", {"key": IMGBB_KEY, "image": encoded_data})
+        img_url = res.json()['data']['url']
 
-        /* Favorite Styles */
-        .dex-card { position: relative; transition: transform 0.1s; cursor: pointer; user-select: none; -webkit-user-select: none; }
-        .dex-card:active { transform: scale(0.95); }
-        .fav-heart { position: absolute; top: 5px; right: 5px; color: #ff4757; font-size: 1.2rem; text-shadow: 0 0 5px rgba(0,0,0,0.5); display: none; z-index: 2; }
-        .dex-card.is-fav .fav-heart { display: block; }
-
-        /* Type Grid for Overlay */
-        .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 15px 0; }
-        .type-pill { padding: 10px 5px; border-radius: 10px; font-size: 0.55rem; text-transform: uppercase; font-weight: bold; color: white; text-align: center; cursor: pointer; opacity: 0.4; border: 2px solid transparent; }
-        .type-pill.active { opacity: 1; border-color: white; }
-
-        /* Collection Grid */
-        .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 10px; margin-top: 15px; }
-        .dex-card { background: var(--card-bg); padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #3d3d3d; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
-        .dex-card img { width: 100%; height: 70px; object-fit: contain; pointer-events: none; }
-        .dex-card.locked img { filter: brightness(0) opacity(0.25); }
-
-        /* Overlays */
-        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:none; z-index: 2000; flex-direction: column; padding: 20px; box-sizing: border-box; justify-content: center; align-items: center; }
-        .modal { background: var(--panel-bg); padding: 20px; border-radius: 20px; border: 2px solid var(--rotom-red); width: 85%; text-align: center; }
-        .search-input { width:100%; padding:12px; background:#222; border:1px solid #444; color:white; font-family:'Orbitron'; border-radius: 5px; box-sizing: border-box; }
+        # Step 2: Google Lens
+        client = serpapi.Client(api_key=SERPAPI_KEY)
+        results = client.search({"engine": "google_lens", "url": img_url})
         
-        canvas { display: none; }
-    </style>
-</head>
-<body>
+        # Step 3: Match Name
+        visual_matches = results.get("visual_matches", [])
+        titles = [match.get("title", "").title() for match in visual_matches]
+        all_words = ", ".join(titles).title()
 
-    <div id="scanner-page" class="page active">
-        <h2 style="text-align: center; color: var(--rotom-red); margin-top: 0; letter-spacing: 2px;">POKÉMON SNAP</h2>
-        <div id="scanner-container">
-            <video id="video" autoplay playsinline></video>
-            <div id="scan-line" class="scan-line" style="display:none;"></div>
-            
-            <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 80%; z-index: 10; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 0.6rem; color: white;">1x</span>
-                <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1" style="flex-grow: 1; accent-color: var(--rotom-blue);">
-                <span style="font-size: 0.6rem; color: white;">5x</span>
-            </div>
-        </div>
-        <button id="scan-btn" class="action-btn" onclick="captureAndIdentify()">SCAN</button>
+        # Compare against our local keys
+        match_found = None
+        matches = []
+        for pokemon in list(POKEMON_DB.keys()):
+            for i in range(all_words.count(pokemon)):
+                matches.append(pokemon)
+
+        if not matches:
+            return jsonify({'error': 'Pokemon not recognized'}), 404
+        else:
+            match_found = max(set(matches), key=matches.count)
+
+        # Step 4: GET DATA FROM LOCAL DB
+        pokemon_info = POKEMON_DB[match_found]
         
-        <div id="result-panel" class="result-panel">
-            <div class="image-comparison">
-                <div class="image-box"><img id="res-img-user" src=""><label id="res-label-user">CAPTURE</label></div>
-                <div class="image-box"><img id="res-img-dex" src=""><label>DATABASE</label></div>
-            </div>
-            <h2 id="res-name" style="text-align:center; margin:10px 0;">---</h2>
-            <div id="res-types" style="text-align:center; margin-bottom: 18px;"></div>
-            <p id="res-desc" style="font-size: 0.7rem; color: #bbb; text-align: center;"></p>
-            <button class="action-btn" onclick="downloadPhoto()">DOWNLOAD PHOTO</button>
-            <button class="secondary-btn" onclick="showDeleteConfirm()" style="color: #ff5555;">DELETE ENTRY</button>
-            <button class="secondary-btn" onclick="openManualPicker(true)">MANUAL CORRECTION</button>
-        </div>
-    </div>
+        slug = match_found.lower().replace(" ", "-").replace(".", "").replace("'", "")
 
-    <div id="pokedex-page" class="page">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span id="stats-counter" style="font-size: 0.7rem; color: var(--rotom-blue);">0 / 0</span>
-            <div style="display: flex; gap: 5px; align-items: center;">
-                <button class="filter-btn" id="sort-btn" onclick="cycleSortMode()" style="width: 100px;">DEX. NO</button>
-                <button class="filter-btn" id="dir-btn" onclick="toggleSortDir()" style="width: 15px; min-width: 0; padding: 10px 0;">↓</button>
-            </div>
-        </div>
-        
-        <input type="text" id="dex-search" class="search-input" placeholder="Search Collection..." onkeyup="renderDex()">
-        
-        <div class="filter-row">
-            <button class="filter-btn active" id="f-all" onclick="setFilter('all')">ALL</button>
-            <button class="filter-btn" id="f-caught" onclick="setFilter('caught')">CAUGHT</button>
-            <button class="filter-btn" id="f-missing" onclick="setFilter('missing')">MISSING</button>
-            
-            <button class="filter-btn" id="f-fav" onclick="toggleFavFilter()" style="flex: 0.4; transition: 0.3s; padding: 0;">
-                <span id="fav-icon" style="filter: grayscale(1); opacity: 0.5; font-size: 1.2rem; line-height: 1; display: block;">❤️</span>
-            </button>
-        </div>
+        return jsonify({
+            'name': match_found,
+            'number': pokemon_info['number'],
+            'description': pokemon_info['description'],
+            'image_url': f"/static/Full Pokemon/{match_found}.png",
+            'types': pokemon_info['types'],
+            'pokedex_url': f"https://www.pokemon.com/uk/pokedex/{slug}"
+        })
 
-        <button class="filter-btn" id="type-trigger-btn" style="width: 100%; margin-top: 5px;" onclick="document.getElementById('type-overlay').style.display='flex'">
-            FILTER BY TYPE
-        </button>
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({'error': 'Server error'}), 500
 
-        <div id="dex-grid" class="dex-grid"></div>
-    </div>
-
-    <div id="type-overlay" class="overlay">
-        <div class="modal" style="width: 95%; max-height: 90vh; overflow-y: auto;">
-            <h3 style="margin-top: 0; color: var(--rotom-blue);">SELECT TYPES</h3>
-            <div class="type-grid" id="type-grid-container"></div>
-            <button class="action-btn" onclick="document.getElementById('type-overlay').style.display='none'">APPLY</button>
-            <button class="secondary-btn" onclick="clearTypeFilters()">CLEAR ALL</button>
-        </div>
-    </div>
-
-    <div id="picker-overlay" class="overlay" style="justify-content: flex-start;">
-        <button class="secondary-btn" onclick="document.getElementById('picker-overlay').style.display='none'" style="margin-bottom: 10px;">BACK</button>
-        <input type="text" id="picker-search" class="search-input" placeholder="Search name..." onkeyup="renderPickerList()">
-        <div id="picker-list" class="dex-grid" style="width: 100%; overflow-y: scroll;"></div>
-    </div>
-    
-    <div id="confirm-overlay" class="overlay">
-        <div class="modal">
-            <h3>Delete?</h3>
-            <button class="action-btn" onclick="deleteCapturedPhoto()">CONFIRM</button>
-            <button class="secondary-btn" onclick="document.getElementById('confirm-overlay').style.display='none'">CANCEL</button>
-        </div>
-    </div>
-    
-    <div id="overwrite-overlay" class="overlay">
-        <div class="modal">
-            <h3 style="margin:0;">CONFLICT</h3>
-            <p style="font-size: 0.8rem; margin: 10px 0;">Already have a photo for:</p>
-            <div style="background:#111; padding:10px; border-radius:10px; margin-bottom:15px; border: 1px solid #444;">
-                <img id="conflict-img" src="" style="width:80px; height:80px; object-fit:contain; display:block; margin: 0 auto;">
-                <strong id="conflict-name" style="color:var(--rotom-blue); display:block; margin-top:5px;">---</strong>
-            </div>
-            <button class="action-btn" onclick="confirmOverwrite(true)">REPLACE PHOTO</button>
-            <button class="secondary-btn" onclick="confirmOverwrite(false)">KEEP CURRENT</button>
-            <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
-            <button class="secondary-btn" style="color:var(--rotom-red);" onclick="triggerManualFromConflict()">WRONG POKEMON?</button>
-        </div>
-    </div>
-
-    <nav class="bottom-nav">
-        <button class="nav-btn active" id="btn-scan" onclick="showPage('scanner')">SCANNER</button>
-        <button class="nav-btn" id="btn-dex" onclick="showPage('pokedex')">COLLECTION</button>
-    </nav>
-
-    <canvas id="canvas"></canvas>
-
-    <script>
-        let POKEMON_DB = {};
-        let currentFilter = 'all';
-        let currentSort = 'num'; // Options: 'num', 'abc', 'date'
-        let sortAscending = false; // false = Descending (Newest/Highest first), true = Ascending
-        let selectedTypes = [];
-        let favorites = [];
-        let favFilterActive = false; // Tracks if favorite filter is enabled
-        let isRendering = false;
-        let currentDisplayedPokemon = "";
-        let tempPhoto = "";
-        let shouldDeleteOnManual = false;
-        let videoStream = null;
-        
-
-        const TYPES = ['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
-
-        async function migrateOldData() {
-            const keys = await localforage.keys();
-            for (let key of keys) {
-                if (key === 'user_favorites') continue;
-                const data = await localforage.getItem(key);
-                // Only migrate if the data is a string (the old format)
-                if (typeof data === 'string' && data.startsWith('data:image')) {
-                    await localforage.setItem(key, {
-                        image: data,
-                        date: 1712361600000 // Sets date to April 6, 2026
-                    });
-                }
-            }
-        }
-
-        async function init() {
-            try {
-                // 1. START CAMERA FIRST (Gets permissions immediately)
-                await startCamera();
-
-                // 2. Load the database in the background
-                const res = await fetch('/api/all_pokemon');
-                POKEMON_DB = await res.json();
-                
-                // 3. Run migration and favorites
-                await migrateOldData();
-                const savedFavs = await localforage.getItem('user_favorites');
-                if (savedFavs) favorites = savedFavs;
-
-                generateTypeGrid();
-            } catch (e) { 
-                console.error("Initialization Error:", e);
-            }
-        }
-
-        async function startCamera() {
-            try {
-                if (videoStream) {
-                    videoStream.getTracks().forEach(track => track.stop());
-                }
-                
-                videoStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" } 
-                });
-                
-                const videoElement = document.getElementById('video');
-                videoElement.srcObject = videoStream;
-
-                const track = videoStream.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                const zoomSlider = document.getElementById('zoom-slider');
-
-                if (capabilities.zoom) {
-                    zoomSlider.min = capabilities.zoom.min;
-                    zoomSlider.max = capabilities.zoom.max;
-                    zoomSlider.step = capabilities.zoom.step;
-                    zoomSlider.value = capabilities.zoom.min;
-                    // Clean up old listeners before adding new ones
-                    const newSlider = zoomSlider.cloneNode(true);
-                    zoomSlider.parentNode.replaceChild(newSlider, zoomSlider);
-                    newSlider.addEventListener('input', async (e) => {
-                        await track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] });
-                    });
-                }
-            } catch (err) {
-                console.error("Camera Error:", err);
-            }
-        }
-
-        async function toggleFavorite(name, cardElement) {
-            if (window.navigator.vibrate) window.navigator.vibrate(50);
-            
-            const index = favorites.indexOf(name);
-            if (index > -1) {
-                favorites.splice(index, 1);
-                cardElement.classList.remove('is-fav');
-                // Hide immediately if filtering by favorites
-                if (favFilterActive) cardElement.style.display = 'none';
-            } else {
-                favorites.push(name);
-                cardElement.classList.add('is-fav');
-            }
-            
-            await localforage.setItem('user_favorites', favorites);
-        }
-
-        async function captureAndIdentify() {
-            const btn = document.getElementById('scan-btn');
-            btn.disabled = true; btn.innerText = "PROCESSING...";
-            document.getElementById('scan-line').style.display = "block";
-            
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 640; canvas.height = (video.videoHeight / video.videoWidth) * 640;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            tempPhoto = canvas.toDataURL('image/jpeg', 0.8);
-
-            try {
-                const res = await fetch('/upload', { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ image: tempPhoto }) 
-                });
-                const data = await res.json();
-                if (res.ok) await checkAndSave(data.name, tempPhoto, POKEMON_DB[data.name]);
-                else alert("Could not identify target.");
-            } catch (e) { console.error("Upload Error:", e); } finally {
-                btn.disabled = false; btn.innerText = "SCAN";
-                document.getElementById('scan-line').style.display = "none";
-            }
-        }
-
-        async function checkAndSave(name, photo, dataObj) {
-            currentDisplayedPokemon = name;
-            const existing = await localforage.getItem(name);
-            if (existing) {
-                document.getElementById('conflict-name').innerText = name;
-                document.getElementById('conflict-img').src = `/static/Full Pokemon/${name}.png`;
-                document.getElementById('overwrite-overlay').style.display = 'flex';
-            } else {
-                // SAVE AS OBJECT WITH TIMESTAMP
-                await localforage.setItem(name, { image: photo, date: Date.now() });
-                displayResult(name, photo, dataObj);
-            }
-        }
-
-        async function confirmOverwrite(overwrite) {
-            document.getElementById('overwrite-overlay').style.display = 'none';
-            if (overwrite) {
-                // Save as OBJECT to match new format
-                await localforage.setItem(currentDisplayedPokemon, { 
-                    image: tempPhoto, 
-                    date: Date.now() 
-                });
-            }
-            const finalData = await localforage.getItem(currentDisplayedPokemon);
-            // Pass finalData.image to the displayResult
-            displayResult(currentDisplayedPokemon, finalData.image, POKEMON_DB[currentDisplayedPokemon]);
-        }
-
-        function triggerManualFromConflict() {
-            document.getElementById('overwrite-overlay').style.display = 'none';
-            openManualPicker(false); 
-        }
-
-        async function displayResult(name, userImg, data) {
-            if(!data) return;
-            currentDisplayedPokemon = name;
-            
-            // 1. Get the stored object to find the capture date
-            const stored = await localforage.getItem(name);
-            
-            // 2. Format the date (Date only, no time)
-            const dateStr = stored ? new Date(stored.date).toLocaleDateString() : "NOT CAUGHT";
-
-            document.getElementById('result-panel').style.display = 'block';
-            document.getElementById('res-name').innerText = name;
-
-            // 3. Update the description to show the Date on top
-            document.getElementById('res-desc').innerHTML = `Captured: ${dateStr}<br><br>${data.description}`;
-            
-            document.getElementById('res-img-dex').src = `/static/Full Pokemon/${name}.png`;
-            
-            const imgUser = document.getElementById('res-img-user');
-            const labelUser = document.getElementById('res-label-user');
-            
-            if (userImg) { 
-                imgUser.src = userImg; 
-                imgUser.classList.remove('missing-photo');
-                labelUser.innerText = "CAPTURE";
-            } else { 
-                imgUser.src = `/static/Full Pokemon/${name}.png`; 
-                imgUser.classList.add('missing-photo');
-                labelUser.innerText = "NOT CAUGHT";
-            }
-
-            const container = document.getElementById('res-types');
-            container.innerHTML = '';
-            data.types.forEach(t => {
-                const span = document.createElement('span');
-                span.className = 'type-pill active';
-                span.style.backgroundColor = `var(--${t.toLowerCase()})`;
-                span.style.opacity = "1"; span.style.padding = "4px 10px";
-                span.innerText = t; container.appendChild(span);
-            });
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }
-
-        async function renderDex() {
-            if (isRendering) return;
-            isRendering = true;
-            const grid = document.getElementById('dex-grid');
-            const search = document.getElementById('dex-search').value.toLowerCase();
-            grid.innerHTML = '';
-            
-            let items = Object.entries(POKEMON_DB);
-
-            // 1. Gather data including timestamps
-            const itemData = await Promise.all(Object.entries(POKEMON_DB).map(async ([name, info]) => {
-                const stored = await localforage.getItem(name);
-                return { 
-                    name, info, 
-                    userImg: stored ? stored.image : null, 
-                    date: stored ? stored.date : 0,
-                    isCaught: !!stored 
-                };
-            }));
-
-            // 2. Sort Logic
-            itemData.sort((a, b) => {
-                // Always prioritize caught on "DATE" sort
-                if (currentSort === 'date') {
-                    if (a.isCaught && !b.isCaught) return -1;
-                    if (!a.isCaught && b.isCaught) return 1;
-                }
-
-                let comparison = 0;
-                if (currentSort === 'num') {
-                    // ↓ = 1 to 1025 (Smallest to Largest)
-                    comparison = parseInt(a.info.number.replace('#', '')) - parseInt(b.info.number.replace('#', ''));
-                } else if (currentSort === 'abc') {
-                    // ↓ = A to Z
-                    comparison = a.name.localeCompare(b.name);
-                } else if (currentSort === 'date') {
-                    // ↓ = Newest (High Timestamp) to Oldest (Low Timestamp)
-                    // We flip this specifically so ↓ puts recent photos at the top
-                    comparison = b.date - a.date;
-                }
-
-                // If ↓ (sortAscending is false), keep the comparison as is.
-                // If ↑ (sortAscending is true), flip the result.
-                return sortAscending ? -comparison : comparison;
-            });
-
-            const fragment = document.createDocumentFragment();
-            let caught = 0; let visible = 0;
-
-            for (const item of itemData) {
-                const { name, info, userImg, isCaught } = item;
-                const isFav = favorites.includes(name);
-                if (isCaught) caught++;
-
-                // Filters
-                if (search && !name.toLowerCase().includes(search)) continue;
-                if (currentFilter === 'caught' && !isCaught) continue;
-                if (currentFilter === 'missing' && isCaught) continue;
-                if (favFilterActive && !isFav) continue; 
-                if (selectedTypes.length > 0 && !selectedTypes.every(t => info.types.includes(t))) continue;
-
-                visible++;
-                const card = document.createElement('div');
-                card.className = `dex-card ${isCaught ? '' : 'locked'} ${isFav ? 'is-fav' : ''}`;
-                // ... Rest of your card creation code (long press, innerHTML, etc) ...
-                card.innerHTML = `
-                    <span class="fav-heart">❤️</span>
-                    <img src="${isCaught ? userImg : '/static/Full Pokemon/'+name+'.png'}" loading="lazy">
-                    <p style="font-size:0.5rem; margin:2px;">#${info.number}</p>
-                    <strong>${isCaught ? name : '???' }</strong>
-                `;
-                
-                // --- SCROLL-AWARE LONG PRESS (1 SECOND) ---
-                let pressTimer;
-                let startX, startY;
-
-                const startPress = (e) => {
-                    // Record starting position (handle both touch and mouse)
-                    const touch = e.touches ? e.touches[0] : e;
-                    startX = touch.pageX;
-                    startY = touch.pageY;
-
-                    // Set timer for 1 second (1000ms)
-                    pressTimer = window.setTimeout(() => {
-                        toggleFavorite(name, card);
-                        pressTimer = null; // Mark as triggered
-                    }, 1000);
-                };
-
-                const movePress = (e) => {
-                    if (!pressTimer) return;
-                    const touch = e.touches ? e.touches[0] : e;
-                    
-                    // If finger moves more than 10px, it's a scroll, not a long press
-                    if (Math.abs(touch.pageX - startX) > 10 || Math.abs(touch.pageY - startY) > 10) {
-                        clearTimeout(pressTimer);
-                        pressTimer = null;
-                    }
-                };
-
-                const endPress = () => {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                };
-
-                card.onmousedown = card.ontouchstart = startPress;
-                card.onmousemove = card.ontouchmove = movePress; // Track movement
-                card.onmouseup = card.onmouseleave = card.ontouchend = endPress;
-                
-                card.oncontextmenu = (e) => {
-                    e.preventDefault();
-                    return false;
-                };
-
-                card.onclick = (e) => {
-                    // Only open scanner if we didn't just finish a long-press
-                    showPage('scanner'); 
-                    displayResult(name, userImg, info); 
-                };
-                fragment.appendChild(card);
-            }
-            document.getElementById('stats-counter').innerText = `${caught} / ${items.length} (Visible: ${visible})`;
-            grid.appendChild(fragment);
-            isRendering = false;
-        }
-
-        function generateTypeGrid() {
-            const container = document.getElementById('type-grid-container');
-            container.innerHTML = '';
-            TYPES.forEach(t => {
-                const p = document.createElement('div');
-                p.className = 'type-pill' + (selectedTypes.includes(t) ? ' active' : '');
-                p.style.backgroundColor = `var(--${t.toLowerCase()})`;
-                p.innerText = t; p.id = `pill-${t}`;
-                p.onclick = () => toggleTypeFilter(t);
-                container.appendChild(p);
-            });
-        }
-
-        function toggleTypeFilter(type) {
-            const el = document.getElementById(`pill-${type}`);
-            if (selectedTypes.includes(type)) {
-                selectedTypes = selectedTypes.filter(t => t !== type);
-                el.classList.remove('active');
-            } else if (selectedTypes.length < 2) {
-                selectedTypes.push(type);
-                el.classList.add('active');
-            }
-            updateTypeButtonColor();
-            renderDex();
-        }
-
-        function updateTypeButtonColor() {
-            const btn = document.getElementById('type-trigger-btn');
-            if (selectedTypes.length === 0) {
-                btn.style.background = "#222"; btn.innerText = "FILTER BY TYPE";
-            } else if (selectedTypes.length === 1) {
-                const c = getComputedStyle(document.documentElement).getPropertyValue(`--${selectedTypes[0].toLowerCase()}`);
-                btn.style.background = c; btn.innerText = `TYPE: ${selectedTypes[0].toUpperCase()}`;
-            } else {
-                const c1 = getComputedStyle(document.documentElement).getPropertyValue(`--${selectedTypes[0].toLowerCase()}`);
-                const c2 = getComputedStyle(document.documentElement).getPropertyValue(`--${selectedTypes[1].toLowerCase()}`);
-                btn.style.background = `linear-gradient(90deg, ${c1} 50%, ${c2} 50%)`;
-                btn.innerText = `${selectedTypes[0].toUpperCase()} / ${selectedTypes[1].toUpperCase()}`;
-            }
-        }
-
-        function clearTypeFilters() {
-            selectedTypes = [];
-            document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('active'));
-            updateTypeButtonColor();
-            renderDex();
-        }
-
-        // Updated setFilter to preserve the favorite button's state
-        function setFilter(f) {
-            currentFilter = f;
-            document.querySelectorAll('.filter-row .filter-btn:not(#f-fav)').forEach(b => b.classList.remove('active'));
-            document.getElementById('f-' + f).classList.add('active');
-            renderDex();
-        }
-
-        function toggleFavFilter() {
-            favFilterActive = !favFilterActive;
-            const btn = document.getElementById('f-fav');
-            const icon = document.getElementById('fav-icon');
-            
-            if (favFilterActive) {
-                btn.style.borderColor = "#ff4757";
-                icon.style.filter = "grayscale(0) drop-shadow(0 0 5px #ff4757)";
-                icon.style.opacity = "1";
-            } else {
-                btn.style.borderColor = "#444";
-                icon.style.filter = "grayscale(1)";
-                icon.style.opacity = "0.5";
-            }
-            renderDex();
-        }
-
-
-        function cycleSortMode() {
-            const modes = ['num', 'abc', 'date'];
-            let idx = (modes.indexOf(currentSort) + 1) % modes.length;
-            currentSort = modes[idx];
-            document.getElementById('sort-btn').innerText = `${currentSort === 'abc' ? 'NAME' : currentSort.toUpperCase()}`;
-            renderDex();
-        }
-
-        function toggleSortDir() {
-            sortAscending = !sortAscending;
-            // false = ↓ (Standard/Recent), true = ↑ (Reverse/Oldest)
-            document.getElementById('dir-btn').innerText = sortAscending ? '↑' : '↓';
-            renderDex();
-        }
-
-        function showPage(p) {
-            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(p + '-page').classList.add('active');
-            document.getElementById('btn-' + (p === 'scanner' ? 'scan' : 'dex')).classList.add('active');
-            if(p === 'pokedex') renderDex();
-        }
-
-        function openManualPicker(del) {
-            shouldDeleteOnManual = del;
-            document.getElementById('picker-overlay').style.display = 'flex';
-            renderPickerList();
-        }
-
-        function renderPickerList() {
-            const list = document.getElementById('picker-list');
-            const s = document.getElementById('picker-search').value.toLowerCase();
-            list.innerHTML = '';
-            Object.entries(POKEMON_DB).forEach(([name, info]) => {
-                if (s && !name.toLowerCase().includes(s)) return;
-                const d = document.createElement('div');
-                d.className = 'dex-card';
-                d.innerHTML = `<img src="/static/Full Pokemon/${name}.png"><p>${name}</p>`;
-                d.onclick = async () => {
-                    document.getElementById('picker-overlay').style.display = 'none';
-                    let targetPhoto = tempPhoto; 
-                    
-                    if (shouldDeleteOnManual) {
-                        const saved = await localforage.getItem(currentDisplayedPokemon);
-                        // FIX: If it's an object, grab the .image string
-                        if (saved) {
-                            targetPhoto = (typeof saved === 'object') ? saved.image : saved;
-                        }
-                        await localforage.removeItem(currentDisplayedPokemon);
-                    }
-                    
-                    tempPhoto = targetPhoto;
-                    await checkAndSave(name, tempPhoto, info);
-                };
-                list.appendChild(d);
-            });
-        }
-
-        async function deleteCapturedPhoto() {
-            await localforage.removeItem(currentDisplayedPokemon);
-            document.getElementById('confirm-overlay').style.display = 'none';
-            document.getElementById('result-panel').style.display = 'none';
-            renderDex();
-        }
-
-        function showDeleteConfirm() { document.getElementById('confirm-overlay').style.display = 'flex'; }
-        
-        function downloadPhoto() {
-            const a = document.createElement('a'); a.download = `${currentDisplayedPokemon}.jpg`;
-            a.href = document.getElementById('res-img-user').src; a.click();
-        }
-
-        init();
-    </script>
-</body>
-</html>
+# ALWAYS keep this at the very bottom
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
