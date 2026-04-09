@@ -8591,5 +8591,138 @@
             "Dragon",
             "Ground"
         ]
+    },
+    "Dipplin": {
+        "category": "Candy Apple Pok\u00e9mon",
+        "number": "#1011",
+        "description": "Dipplin is two creatures in one Pok\u00e9mon. Its evolution was triggered by a special apple grown only in one place.",
+        "types": [
+            "Grass",
+            "Dragon"
+        ]
+    },
+    "Poltchageist": {
+        "category": "Matcha Pok\u00e9mon",
+        "number": "#1012",
+        "description": "Supposedly, the regrets of a tea ceremony master who died before perfecting his craft lingered in some matcha and became a Pok\u00e9mon.",
+        "types": [
+            "Grass",
+            "Ghost"
+        ]
+    },
+    "Sinistcha": {
+        "category": "Matcha Pok\u00e9mon",
+        "number": "#1013",
+        "description": "It pretends to be tea, trying to fool people into drinking it so it can drain their life-force. Its ruse is generally unsuccessful.",
+        "types": [
+            "Grass",
+            "Ghost"
+        ]
+    },
+    "Okidogi": {
+        "category": "Retainer Pok\u00e9mon",
+        "number": "#1014",
+        "description": "After all its muscles were stimulated by the toxic chain around its neck, Okidogi transformed and gained a powerful physique.",
+        "types": [
+            "Poison",
+            "Fighting"
+        ]
+    },
+    "Munkidori": {
+        "category": "Retainer Pok\u00e9mon",
+        "number": "#1015",
+        "description": "The chain is made from toxins that enhance capabilities. It stimulated Munkidori's brain and caused the Pok\u00e9mon's psychic powers to bloom.",
+        "types": [
+            "Poison",
+            "Psychic"
+        ]
+    },
+    "Fezandipiti": {
+        "category": "Retainer Pok\u00e9mon",
+        "number": "#1016",
+        "description": "Fezandipiti owes its beautiful looks and lovely voice to the toxic stimulants emanating from the chain wrapped around its body.",
+        "types": [
+            "Poison",
+            "Fairy"
+        ]
+    },
+    "Ogerpon": {
+        "category": "Mask Pok\u00e9mon",
+        "number": "#1017",
+        "description": "This Pok\u00e9mon's type changes based on which mask it's wearing. It confounds its enemies with nimble movements and kicks.",
+        "types": [
+            "Grass"
+        ]
+    },
+    "Archaludon": {
+        "category": "Alloy Pok\u00e9mon",
+        "number": "#1018",
+        "description": "It gathers static electricity from its surroundings. The beams it launches when down on all fours are tremendously powerful.",
+        "types": [
+            "Steel",
+            "Dragon"
+        ]
+    },
+    "Hydrapple": {
+        "category": "Apple Hydra Pok\u00e9mon",
+        "number": "#1019",
+        "description": "Seven syrpents live inside an apple made of syrup. The syrpent in the center is the commander.",
+        "types": [
+            "Grass",
+            "Dragon"
+        ]
+    },
+    "Gouging Fire": {
+        "category": "Paradox Pok\u00e9mon",
+        "number": "#1020",
+        "description": "There are scant few reports of this creature being sighted. One short video shows it rampaging and spouting pillars of flame.",
+        "types": [
+            "Fire",
+            "Dragon"
+        ]
+    },
+    "Raging Bolt": {
+        "category": "Paradox Pok\u00e9mon",
+        "number": "#1021",
+        "description": "It's said to incinerate everything around it with lightning launched from its fur. Very little is known about this creature.",
+        "types": [
+            "Electric",
+            "Dragon"
+        ]
+    },
+    "Iron Boulder": {
+        "category": "Paradox Pok\u00e9mon",
+        "number": "#1022",
+        "description": "It resembles a Pok\u00e9mon described in a dubious magazine as a Terrakion that had been modified by an evil organization.",
+        "types": [
+            "Rock",
+            "Psychic"
+        ]
+    },
+    "Iron Crown": {
+        "category": "Paradox Pok\u00e9mon",
+        "number": "#1023",
+        "description": "It resembles a mysterious object introduced in a paranormal magazine as a cutting-edge weapon shaped like a Cobalion.",
+        "types": [
+            "Steel",
+            "Psychic"
+        ]
+    },
+    "Terapagos": {
+        "category": "Tera Pok\u00e9mon",
+        "number": "#1024",
+        "description": "Terapagos protects itself using its power to transform energy into hard crystals. This Pok\u00e9mon is the source of the Terastal phenomenon.",
+        "types": [
+            "Normal"
+        ]
+    },
+    "Pecharunt": {
+        "category": "Subjugation Pok\u00e9mon",
+        "number": "#1025",
+        "description": "It feeds others toxic mochi that draw out desires and capabilities. Those who eat the mochi fall under Pecharunt\u2019s control, chained to its will.",
+        "types": [
+            "Poison",
+            "Ghost"
+        ]
     }
 }
