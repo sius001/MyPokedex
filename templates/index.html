@@ -506,6 +506,10 @@
             }
             
             const finalData = await localforage.getItem(currentDisplayedPokemon);
+            
+            // CRITICAL: Update tempPhoto so the download button works with the displayed image
+            tempPhoto = finalData.image; 
+            
             displayResult(currentDisplayedPokemon, finalData.image, dataObj);
         }
 
@@ -518,8 +522,18 @@
             if (!data) return;
             currentDisplayedPokemon = name;
 
-            // NEW: Check local first, then cloud if logged in
             let stored = await localforage.getItem(name);
+            // ... (keep your existing cloud check logic here) ...
+
+            // CRITICAL: Set tempPhoto so the download button works for this specific pokemon
+            if (userImg) {
+                tempPhoto = userImg;
+            } else if (stored && stored.image) {
+                tempPhoto = stored.image;
+            } else {
+                tempPhoto = ""; // Reset if not caught
+            }
+            
             const user = auth.currentUser;
             
             if (!stored && user) {
@@ -880,22 +894,32 @@
         function showDeleteConfirm() { document.getElementById('confirm-overlay').style.display = 'flex'; }
         
         function downloadPhoto() {
+            // 1. Determine if tempPhoto is a string or an object
+            let imageData = tempPhoto;
+            if (tempPhoto && typeof tempPhoto === 'object') {
+                imageData = tempPhoto.image;
+            }
+
+            if (!imageData || !imageData.startsWith('data:image')) {
+                alert("No capture found to download!");
+                return;
+            }
+
             const link = document.createElement('a');
-            link.download = `${currentDisplayedPokemon}_300PPI.jpg`;
+            link.download = `${currentDisplayedPokemon}_Capture.jpg`;
             
-            // We convert the base64 to a Blob
-            const byteString = atob(tempPhoto.split(',')[1]);
+            // Convert the base64 to a Blob
+            const byteString = atob(imageData.split(',')[1]);
             const ab = new ArrayBuffer(byteString.length);
             const ia = new Uint8Array(ab);
             for (let i = 0; i < byteString.length; i++) {
                 ia[i] = byteString.charCodeAt(i);
             }
             
-            // The blob itself doesn't hold PPI, but creating a high-res blob
-            // ensures the printer has enough 'dots' to hit 300 PPI.
             const blob = new Blob([ab], {type: 'image/jpeg'});
             link.href = URL.createObjectURL(blob);
             link.click();
+            URL.revokeObjectURL(link.href);
         }
 
         async function downloadCollectionJSON() {
