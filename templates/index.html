@@ -110,16 +110,20 @@
 <body>
 
     <div id="scanner-page" class="page active">
-        <div id="streak-container" style="position: absolute; top: 15px; left: 15px; z-index: 10; font-family: 'Orbitron'; font-size: 1rem; display: flex; align-items: center; gap: 5px; text-shadow: 0 0 5px #000;">
-            <span id="streak-number">0</span>
-            <span id="streak-fire" style="display: none;">🔥</span>
+        <div id="quota-info" style="text-align: center; font-size: 0.7rem; color: var(--rotom-blue); margin-bottom: 10px; display: none;">
+            <span id="scans-left">--</span> SCANS LEFT THIS MONTH<br>
+            RENEWS ON: <span id="renew-date">--</span>
         </div>
-        <div style="text-align: right; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; position: relative; z-index: 10;">
+            <div id="streak-container" style="font-family: 'Orbitron'; font-size: 1rem; display: flex; align-items: center; gap: 5px; text-shadow: 0 0 5px #000;">
+                <span id="streak-number">0</span>
+                <span id="streak-fire" style="display: none;">🔥</span>
+            </div>
             <button id="login-btn" class="login-btn" onclick="handleAuthAction()">LOGIN WITH GOOGLE</button>
         </div>
         <h2 style="text-align: center; color: var(--rotom-red); margin-top: 0; letter-spacing: 2px;">POKÉMON SNAP</h2>
         <div id="scanner-container">
-            <video id="video" autoplay playsinline></video>
+            <video id="video" autoplay playsinline muted></video>
             <div id="scan-line" class="scan-line" style="display:none;"></div>
             
             <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 80%; z-index: 10; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; display: flex; align-items: center; gap: 10px;">
@@ -237,6 +241,156 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWa_IeuSevyKeRG0jv4VEG3O2_tjPxhc4",
+            authDomain: "pokemon-snap-1b3c2.firebaseapp.com",
+            projectId: "pokemon-snap-1b3c2",
+            storageBucket: "pokemon-snap-1b3c2.firebasestorage.app",
+            messagingSenderId: "776334935734",
+            appId: "1:776334935734:web:d6bd8aa2087408cdf5c817"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let POKEMON_DB = {};
+        let currentFilter = 'all';
+        let currentSort = 'num'; // Options: 'num', 'abc', 'date'
+        let sortAscending = false; // false = Descending (Newest/Highest first), true = Ascending
+        let selectedTypes = [];
+        let favorites = [];
+        let favFilterActive = false; // Tracks if favorite filter is enabled
+        let isRendering = false;
+        let currentDisplayedPokemon = "";
+        let tempPhoto = "";
+        let shouldDeleteOnManual = false;
+        let videoStream = null;
+
+        // --- NEW: USER STATE & QUOTA CHECK ---
+        let userProfile = null;
+
+        auth.onAuthStateChanged(async (user) => {
+            const btn = document.getElementById('login-btn');
+            const quotaInfo = document.getElementById('quota-info');
+            
+            if (user) {
+                btn.innerText = user.displayName.split(' ')[0].toUpperCase();
+                btn.classList.add('logged-in');
+
+                // Fetch User Permissions/Quota from Firestore
+                const userDoc = await db.collection('users').doc(user.uid).get();
+
+                if (!userDoc.exists) {
+                    // NEW: Prompt for reason on first registration
+                    const reason = prompt("Please tell us why you want to use the website:");
+                    
+                    // Create pending account with the reason included
+                    userProfile = {
+                        approved: false,
+                        unlimitedAccess: false,
+                        scanCount: 0,
+                        lastResetMonth: new Date().getMonth(),
+                        email: user.email,
+                        requestReason: reason || "No reason provided" 
+                    };
+                    await db.collection('users').doc(user.uid).set(userProfile);
+                } else {
+                    userProfile = userDoc.data();
+                }
+
+                // Handle Monthly Reset
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth();
+
+                // Create a date object for the 18th of THIS month
+                let resetDateThisMonth = new Date(currentYear, currentMonth, 18);
+
+                // If today is BEFORE the 18th, the "active" reset period started on the 18th of PREVIOUS month
+                if (now < resetDateThisMonth) {
+                    resetDateThisMonth = new Date(currentYear, currentMonth - 1, 18);
+                }
+
+                // If the user's last reset happened BEFORE the start of the current period, reset them
+                if (!userProfile.lastResetTime || userProfile.lastResetTime < resetDateThisMonth.getTime()) {
+                    userProfile.scanCount = 0;
+                    userProfile.lastResetTime = now.getTime(); // Store as timestamp for precision
+                    await db.collection('users').doc(user.uid).update({ 
+                        scanCount: 0, 
+                        lastResetTime: userProfile.lastResetTime 
+                    });
+                }
+
+                updateQuotaUI();
+                quotaInfo.style.display = 'block';
+                
+            } else {
+                btn.innerText = "LOGIN WITH GOOGLE";
+                btn.classList.remove('logged-in');
+                quotaInfo.style.display = 'none';
+                userProfile = null;
+            }
+            renderDex();
+        });
+
+        function updateQuotaUI() {
+            if (!userProfile) return;
+            
+            const quotaInfo = document.getElementById('quota-info');
+
+            if (!userProfile.approved) {
+                quotaInfo.innerHTML = `
+                    <div style="color: var(--rotom-red); font-weight: bold; letter-spacing: 1px;">
+                        ACCOUNT PENDING APPROVAL<br>
+                        SCAN FEATURE DISABLED SORRY :(
+                    </div>
+                `;
+            } else {
+                // Flex container to put button on the right
+                // Container uses flex-start to snap text to the left, button remains absolute right
+                quotaInfo.innerHTML = `
+                    <div style="display: flex; justify-content: flex-start; align-items: center; position: relative;">
+                        <div id="quota-text-container" style="text-align: left;">
+                            <span id="scans-left">--</span> SCANS LEFT THIS MONTH<br>
+                            RENEWS ON: <span id="renew-date">--</span>
+                        </div>
+                        <button onclick="sendFeedback()" style="position: absolute; right: 0; background: var(--rotom-blue); color: white; border: none; padding: 5px 10px; border-radius: 4px; font-family: 'Orbitron', sans-serif; font-size: 0.6rem; cursor: pointer;">
+                            FEEDBACK
+                        </button>
+                    </div>
+                `;
+                
+                const scansLeft = userProfile.unlimitedAccess ? "∞" : Math.max(0, 25 - userProfile.scanCount);
+                document.getElementById('scans-left').innerText = scansLeft;
+                
+                const now = new Date();
+                let nextRenew = new Date(now.getFullYear(), now.getMonth(), 18);
+                if (now >= nextRenew) {
+                    nextRenew.setMonth(nextRenew.getMonth() + 1);
+                }
+                document.getElementById('renew-date').innerText = nextRenew.toLocaleDateString();
+            }
+        }
+
+        async function sendFeedback() {
+            const message = prompt("Enter your feedback or report a bug:");
+            if (!message) return;
+
+            try {
+                await db.collection('feedback').add({
+                    uid: auth.currentUser.uid,
+                    email: auth.currentUser.email,
+                    message: message,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("Feedback sent! Thank you.");
+            } catch (e) {
+                console.error("Feedback error:", e);
+                alert("Failed to send feedback. Please try again later.");
+            }
+        }
+
 
         async function updateStreak() {
             const today = new Date().toDateString();
@@ -321,19 +475,6 @@
             }
         }
 
-        const firebaseConfig = {
-        apiKey: "AIzaSyDWa_IeuSevyKeRG0jv4VEG3O2_tjPxhc4",
-        authDomain: "pokemon-snap-1b3c2.firebaseapp.com",
-        projectId: "pokemon-snap-1b3c2",
-        storageBucket: "pokemon-snap-1b3c2.firebasestorage.app",
-        messagingSenderId: "776334935734",
-        appId: "1:776334935734:web:d6bd8aa2087408cdf5c817"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
         // Watch for login/logout
         auth.onAuthStateChanged(async (user) => {
             const btn = document.getElementById('login-btn');
@@ -407,19 +548,6 @@
             }
         }
 
-
-        let POKEMON_DB = {};
-        let currentFilter = 'all';
-        let currentSort = 'num'; // Options: 'num', 'abc', 'date'
-        let sortAscending = false; // false = Descending (Newest/Highest first), true = Ascending
-        let selectedTypes = [];
-        let favorites = [];
-        let favFilterActive = false; // Tracks if favorite filter is enabled
-        let isRendering = false;
-        let currentDisplayedPokemon = "";
-        let tempPhoto = "";
-        let shouldDeleteOnManual = false;
-        let videoStream = null;
         
 
         const TYPES = ['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
@@ -441,8 +569,8 @@
 
         async function init() {
             try {
-                // 1. START CAMERA FIRST (Gets permissions immediately)
-                await startCamera();
+                // 1. START CAMERA FIRST (Removed 'await' so it runs in the background)
+                startCamera();
 
                 // 2. Load the database in the background
                 const res = await fetch('/api/all_pokemon');
@@ -467,27 +595,40 @@
                 }
                 
                 videoStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" } 
+                    video: { facingMode: { ideal: "environment" } } 
                 });
                 
                 const videoElement = document.getElementById('video');
                 videoElement.srcObject = videoStream;
+                
+                // EXPLICITLY play the video immediately 
+                videoElement.play().catch(e => console.warn("Auto-play blocked:", e));
 
                 const track = videoStream.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                const zoomSlider = document.getElementById('zoom-slider');
+                
+                // CRITICAL FIX: Safely check if getCapabilities exists before calling it
+                if (typeof track.getCapabilities === 'function') {
+                    const capabilities = track.getCapabilities();
+                    const zoomSlider = document.getElementById('zoom-slider');
 
-                if (capabilities.zoom) {
-                    zoomSlider.min = capabilities.zoom.min;
-                    zoomSlider.max = capabilities.zoom.max;
-                    zoomSlider.step = capabilities.zoom.step;
-                    zoomSlider.value = capabilities.zoom.min;
-                    // Clean up old listeners before adding new ones
-                    const newSlider = zoomSlider.cloneNode(true);
-                    zoomSlider.parentNode.replaceChild(newSlider, zoomSlider);
-                    newSlider.addEventListener('input', async (e) => {
-                        await track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] });
-                    });
+                    if (capabilities && capabilities.zoom) {
+                        zoomSlider.min = capabilities.zoom.min;
+                        zoomSlider.max = capabilities.zoom.max;
+                        zoomSlider.step = capabilities.zoom.step;
+                        zoomSlider.value = capabilities.zoom.min;
+                        
+                        const newSlider = zoomSlider.cloneNode(true);
+                        zoomSlider.parentNode.replaceChild(newSlider, zoomSlider);
+                        newSlider.addEventListener('input', async (e) => {
+                            await track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] });
+                        });
+                    } else {
+                        // Hide slider if zoom is not supported
+                        document.getElementById('zoom-slider').parentElement.style.display = 'none';
+                    }
+                } else {
+                    // Hide slider if capabilities API is missing
+                    document.getElementById('zoom-slider').parentElement.style.display = 'none';
                 }
             } catch (err) {
                 console.error("Camera Error:", err);
@@ -512,6 +653,24 @@
         }
 
         async function captureAndIdentify() {
+            // 1. Check if Logged In
+            if (!auth.currentUser) {
+                alert("Please login to scan Pokémon.");
+                return;
+            }
+
+            // 2. Check Approval
+            if (!userProfile.approved) {
+                alert("Access Pending. Please wait for admin approval.");
+                return;
+            }
+
+            // 3. Check Quota
+            if (!userProfile.unlimitedAccess && userProfile.scanCount >= 25) {
+                alert("Monthly scan limit reached!");
+                return;
+            }
+
             const btn = document.getElementById('scan-btn');
             btn.disabled = true; btn.innerText = "PROCESSING...";
             document.getElementById('scan-line').style.display = "block";
@@ -519,23 +678,33 @@
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
-            // Change 640 to something higher, like 1920 or 2560 (depending on device limits)
-            const TARGET_WIDTH = 1280; 
-            canvas.width = TARGET_WIDTH; 
-            canvas.height = (video.videoHeight / video.videoWidth) * TARGET_WIDTH;
+            canvas.width = 1280; 
+            canvas.height = (video.videoHeight / video.videoWidth) * 1280;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            tempPhoto = canvas.toDataURL('image/jpeg', 0.9);
+            tempPhoto = canvas.toDataURL('image/jpeg', 0.8);
 
             try {
                 const res = await fetch('/upload', { 
                     method: 'POST', 
                     headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ image: tempPhoto }) 
+                    body: JSON.stringify({ image: tempPhoto }) // Now it matches app.py
                 });
                 const data = await res.json();
-                if (res.ok) await checkAndSave(data.name, tempPhoto, POKEMON_DB[data.name]);
-                else alert("Could not identify target.");
-            } catch (e) { console.error("Upload Error:", e); } finally {
+                
+                if (res.ok) {
+                    // Increment Scan Count in Database
+                    const newCount = (userProfile.scanCount || 0) + 1;
+                    await db.collection('users').doc(auth.currentUser.uid).update({ scanCount: newCount });
+                    userProfile.scanCount = newCount;
+                    updateQuotaUI();
+                    
+                    await checkAndSave(data.name, tempPhoto, POKEMON_DB[data.name]);
+                } else {
+                    alert("Could not identify target.");
+                }
+            } catch (e) { 
+                console.error("Upload Error:", e); 
+            } finally {
                 btn.disabled = false; btn.innerText = "SCAN";
                 document.getElementById('scan-line').style.display = "none";
             }
@@ -907,7 +1076,16 @@
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(p + '-page').classList.add('active');
             document.getElementById('btn-' + (p === 'scanner' ? 'scan' : 'dex')).classList.add('active');
+            
             if(p === 'pokedex') renderDex();
+            
+            // NEW: If they click back to the scanner, force the video to play
+            if(p === 'scanner') {
+                const video = document.getElementById('video');
+                if (video.paused) {
+                    video.play().catch(e => console.error("Could not play video:", e));
+                }
+            }
         }
 
         function openManualPicker(del) {
@@ -1013,6 +1191,20 @@
             URL.revokeObjectURL(url);
         }
 
+        // Force the camera to wake up if the window regains focus or is tapped
+        window.addEventListener('focus', () => {
+            const video = document.getElementById('video');
+            if (video && video.paused && videoStream) {
+                video.play().catch(e => console.warn(e));
+            }
+        });
+        
+        document.body.addEventListener('click', () => {
+            const video = document.getElementById('video');
+            if (video && video.paused && videoStream) {
+                video.play().catch(e => console.warn(e));
+            }
+        });
 
         init();
     </script>
