@@ -9,9 +9,9 @@ app = Flask(__name__)
 # --- KEYS (ENSURE THESE ARE CORRECT) ---
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 IMGBB_KEY = os.environ.get("IMGBB_KEY")
+
 if not IMGBB_KEY:
     IMGBB_KEY = "58f4278c0df1a7a54c5ae3135d115031"
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 1. LOAD LOCAL DATABASE ON STARTUP
